@@ -3,15 +3,6 @@
 version = 3
 
 [[package]]
-name = "L0C0B0T"
-version = "0.1.0"
-dependencies = [
- "dotenv",
- "serenity",
- "tokio",
-]
-
-[[package]]
 name = "adler"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -546,6 +537,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49409df3e3bf0856b916e2ceaca09ee28e6871cf7d9ce97a692cacfdb2a25a47"
 dependencies = [
  "wasm-bindgen",
+]
+
+[[package]]
+name = "l0c0b0t"
+version = "0.1.0"
+dependencies = [
+ "dotenv",
+ "serenity",
+ "tokio",
 ]
 
 [[package]]
