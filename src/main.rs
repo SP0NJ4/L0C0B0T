@@ -1,7 +1,12 @@
 use std::env;
 
 use dotenv::dotenv;
-use l0c0b0t::client::L0C0B0TClient;
+
+mod client;
+mod commands;
+mod framework;
+
+use client::L0C0B0TClient;
 
 #[tokio::main]
 async fn main() {

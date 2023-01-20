@@ -1,5 +1,6 @@
-use crate::framework::create_framework;
 use serenity::prelude::*;
+
+use crate::framework::create_framework;
 
 pub struct L0C0B0TClient {
     client: Client,
@@ -19,6 +20,7 @@ impl L0C0B0TClient {
     }
 
     pub async fn start(&mut self) -> Result<(), serenity::Error> {
+        println!("Starting client...");
         self.client.start().await
     }
 }
