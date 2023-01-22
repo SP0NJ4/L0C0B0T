@@ -1,4 +1,4 @@
-// Play control
+// Playback control
 
 use serenity::{
     framework::standard::{macros::command, Args, CommandResult},
@@ -24,6 +24,7 @@ pub async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let query = args.rest();
 
     if !query.is_empty() {
+        // If there is a query, search for a video and play it
         let source = songbird::input::ytdl_search(&query)
             .await
             .map_err(|_| "Failed to find video")?;
@@ -34,7 +35,22 @@ pub async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
         Ok(())
     } else {
-        Err("No query provided".into())
+        // If there is no query, resume the current song
+        let manager = songbird::get(ctx).await.unwrap().clone();
+
+        let handler_lock = manager.get(guild).unwrap();
+        let handler = handler_lock.lock().await;
+
+        let queue = handler.queue();
+
+        if queue.current().is_none() {
+            return Err("No song playing".into());
+        }
+
+        handler
+            .queue()
+            .resume()
+            .map_err(|_| "Failed to resume".into())
     }
 }
 
@@ -85,13 +101,32 @@ pub async fn skip(ctx: &Context, msg: &Message) -> CommandResult {
 
     let queue = handler.queue();
 
-    if queue.is_empty() {
-        return Err("Queue is empty".into());
+    if queue.current().is_none() {
+        return Err("No song playing".into());
     }
 
     queue.skip().unwrap();
 
     Ok(())
+}
+
+#[command]
+#[only_in(guilds)]
+pub async fn pause(ctx: &Context, msg: &Message) -> CommandResult {
+    let guild = msg.guild(&ctx.cache).unwrap();
+
+    let manager = songbird::get(ctx).await.unwrap().clone();
+
+    let handler_lock = manager.get(guild.id).unwrap();
+    let handler = handler_lock.lock().await;
+
+    let queue = handler.queue();
+
+    if queue.current().is_none() {
+        return Err("No song playing".into());
+    }
+
+    queue.pause().map_err(|_| "Failed to pause".into())
 }
 
 #[command]
