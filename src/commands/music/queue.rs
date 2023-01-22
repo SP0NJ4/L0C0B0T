@@ -108,19 +108,42 @@ pub async fn now_playing(ctx: &Context, msg: &Message) -> CommandResult {
     let handler_lock = manager.get(guild.id).unwrap();
     let handler = handler_lock.lock().await;
 
-    let queue = handler.queue().current_queue();
+    let current_track = handler.queue().current();
 
-    if queue.is_empty() {
-        return Err("Queue is empty".into());
+    match current_track {
+        Some(track) => {
+            let metadata = track.metadata();
+            let title = metadata.title.as_ref().unwrap();
+
+            msg.channel_id
+                .say(&ctx.http, format!("Now playing: {}", title))
+                .await?;
+
+            Ok(())
+        }
+        None => Err("No song playing".into()),
     }
+}
 
-    let track = queue.first().unwrap();
-    let metadata = track.metadata();
-    let title = metadata.title.as_ref().unwrap();
+#[command]
+#[only_in(guilds)]
+pub async fn clear(ctx: &Context, msg: &Message) -> CommandResult {
+    let guild = msg.guild(&ctx.cache).unwrap();
 
-    msg.channel_id
-        .say(&ctx.http, format!("Now playing: {}", title))
-        .await?;
+    let manager = songbird::get(ctx).await.unwrap().clone();
 
-    Ok(())
+    let handler_lock = manager.get(guild.id).unwrap();
+    let handler = handler_lock.lock().await;
+
+    let queue = handler.queue();
+
+    if queue.len() <= 1 {
+        Err("Queue is empty".into())
+    } else {
+        handler.queue().modify_queue(|q| {
+            q.drain(1..);
+        });
+
+        Ok(())
+    }
 }
