@@ -64,6 +64,10 @@ pub(super) async fn join_channel<'a>(
         .map_err(|_| "Failed to join voice channel".into())
 }
 
+/////////////////////////
+//      Commands       //
+/////////////////////////
+
 #[command]
 #[only_in(guilds)]
 pub async fn join(ctx: &Context, msg: &Message) -> CommandResult {

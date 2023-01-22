@@ -57,6 +57,10 @@ pub(super) async fn insert_song<'a>(
     }
 }
 
+/////////////////////////
+//      Commands       //
+/////////////////////////
+
 #[command]
 #[only_in(guilds)]
 #[aliases("q")]
