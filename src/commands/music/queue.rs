@@ -27,11 +27,11 @@ pub(super) enum QueuePosition {
 ///
 /// * `Ok(())` - The song was added to the queue
 /// * `Err(&str)` - The song was not added to the queue
-pub(super) async fn insert_song<'a>(
+pub(super) async fn insert_song(
     handler_lock: Arc<Mutex<Call>>,
     source: Input,
     position: QueuePosition,
-) -> Result<(), &'a str> {
+) -> Result<(), &'static str> {
     let mut handler = handler_lock.lock().await;
 
     // Add the song to the queue

@@ -1,15 +1,46 @@
 // Playback control
 
+use std::sync::Arc;
+
 use serenity::{
     framework::standard::{macros::command, Args, CommandResult},
     model::channel::Message,
-    prelude::Context,
+    prelude::{Context, Mutex},
 };
+use songbird::Call;
 
 use super::{
     channels::{get_guild_channel, join_channel},
     queue::{insert_song, QueuePosition},
 };
+
+pub(super) async fn pause_song(handler_lock: Arc<Mutex<Call>>) -> Result<(), &'static str> {
+    let handler = handler_lock.lock().await;
+
+    let queue = handler.queue();
+
+    if queue.current().is_none() {
+        return Err("No song playing");
+    }
+
+    handler.queue().pause().map_err(|_| "Failed to pause")?;
+
+    Ok(())
+}
+
+pub(super) async fn resume_song(handler_lock: Arc<Mutex<Call>>) -> Result<(), &'static str> {
+    let handler = handler_lock.lock().await;
+
+    let queue = handler.queue();
+
+    if queue.current().is_none() {
+        return Err("No song playing");
+    }
+
+    handler.queue().resume().map_err(|_| "Failed to resume")?;
+
+    Ok(())
+}
 
 /////////////////////////
 //      Commands       //
@@ -39,18 +70,8 @@ pub async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         let manager = songbird::get(ctx).await.unwrap().clone();
 
         let handler_lock = manager.get(guild).unwrap();
-        let handler = handler_lock.lock().await;
 
-        let queue = handler.queue();
-
-        if queue.current().is_none() {
-            return Err("No song playing".into());
-        }
-
-        handler
-            .queue()
-            .resume()
-            .map_err(|_| "Failed to resume".into())
+        resume_song(handler_lock).await.map_err(|e| e.into())
     }
 }
 
@@ -118,15 +139,20 @@ pub async fn pause(ctx: &Context, msg: &Message) -> CommandResult {
     let manager = songbird::get(ctx).await.unwrap().clone();
 
     let handler_lock = manager.get(guild.id).unwrap();
-    let handler = handler_lock.lock().await;
 
-    let queue = handler.queue();
+    pause_song(handler_lock).await.map_err(|e| e.into())
+}
 
-    if queue.current().is_none() {
-        return Err("No song playing".into());
-    }
+#[command]
+#[only_in(guilds)]
+pub async fn resume(ctx: &Context, msg: &Message) -> CommandResult {
+    let guild = msg.guild(&ctx.cache).unwrap();
 
-    queue.pause().map_err(|_| "Failed to pause".into())
+    let manager = songbird::get(ctx).await.unwrap().clone();
+
+    let handler_lock = manager.get(guild.id).unwrap();
+
+    resume_song(handler_lock).await.map_err(|e| e.into())
 }
 
 #[command]

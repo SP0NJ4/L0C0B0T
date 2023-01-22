@@ -23,10 +23,10 @@ use songbird::Call;
 ///
 /// * `Ok((GuildId, ChannelId))` - The guild and channel the user is in
 /// * `Err(&str)` - The user is not in a voice channel
-pub(super) async fn get_guild_channel<'a>(
+pub(super) async fn get_guild_channel(
     ctx: &Context,
     msg: &Message,
-) -> Result<(GuildId, ChannelId), &'a str> {
+) -> Result<(GuildId, ChannelId), &'static str> {
     let guild = msg.guild(&ctx.cache).unwrap();
 
     let channel = guild
@@ -50,11 +50,11 @@ pub(super) async fn get_guild_channel<'a>(
 ///
 /// * `Ok(Arc<Mutex<Call>>)` - The lock to the songbird handler
 /// * `Err(&str)` - The bot failed to join the voice channel
-pub(super) async fn join_channel<'a>(
+pub(super) async fn join_channel(
     ctx: &Context,
     guild_id: GuildId,
     channel_id: ChannelId,
-) -> Result<Arc<Mutex<Call>>, &'a str> {
+) -> Result<Arc<Mutex<Call>>, &'static str> {
     let manager = songbird::get(ctx).await.unwrap().clone();
 
     let (handler_lock, success) = manager.join(guild_id, channel_id).await;
