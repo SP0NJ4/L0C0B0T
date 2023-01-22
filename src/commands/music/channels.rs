@@ -6,7 +6,7 @@ use serenity::{
 
 #[command]
 #[only_in(guilds)]
-async fn join(ctx: &Context, msg: &Message) -> CommandResult {
+pub async fn join(ctx: &Context, msg: &Message) -> CommandResult {
     let guild = msg.guild(&ctx.cache).unwrap();
 
     let channel = guild
@@ -28,7 +28,7 @@ async fn join(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[only_in(guilds)]
 #[aliases("dc", "disconnect", "disc")]
-async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
+pub async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
     let guild = msg.guild(&ctx.cache).unwrap();
 
     let manager = songbird::get(ctx).await.unwrap().clone();

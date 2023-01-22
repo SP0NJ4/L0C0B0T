@@ -1,11 +1,11 @@
 use serenity::framework::standard::macros::group;
 
 mod channels;
-mod play;
+mod queue;
 
 use channels::*;
-use play::*;
+use queue::*;
 
 #[group]
-#[commands(play, join, leave)]
+#[commands(play, skip, join, leave)]
 struct Music;

@@ -5,6 +5,7 @@ use serenity::{
 };
 
 #[command]
+#[only_in(guilds)]
 pub async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let query = args.rest();
 
@@ -27,7 +28,28 @@ pub async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let mut handler = handler_lock.lock().await;
     let source = songbird::input::ytdl_search(&query).await.unwrap();
 
-    handler.play_source(source);
+    handler.enqueue_source(source);
+
+    Ok(())
+}
+
+#[command]
+#[only_in(guilds)]
+pub async fn skip(ctx: &Context, msg: &Message) -> CommandResult {
+    let guild = msg.guild(&ctx.cache).unwrap();
+
+    let manager = songbird::get(ctx).await.unwrap().clone();
+
+    let handler_lock = manager.get(guild.id).unwrap();
+    let handler = handler_lock.lock().await;
+
+    let queue = handler.queue();
+
+    if queue.is_empty() {
+        return Err("Queue is empty".into());
+    }
+
+    queue.skip().unwrap();
 
     Ok(())
 }
