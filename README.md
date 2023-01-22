@@ -18,6 +18,13 @@ El L0C0B0T se compila y corre usando `cargo`:
 cargo run
 ```
 
+Además, necesitan tener un `.env` en el root del repositorio que defina la variable `DISCORD_TOKEN` con el token del bot. Por ejemplo:
+
+```bash
+# ./.env
+DISCORD_TOKEN={{token}}
+```
+
 ### Para correr el L0C0B0T en un container de Docker
 
 La otra opción es correr el L0C0B0T en un container de [Docker](https://www.docker.com/). Se puede hacer de la siguiente manera:
