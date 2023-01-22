@@ -41,3 +41,31 @@ pub async fn queue(ctx: &Context, msg: &Message) -> CommandResult {
 
     Ok(())
 }
+
+#[command]
+#[only_in(guilds)]
+#[aliases("nepe", "np")]
+pub async fn now_playing(ctx: &Context, msg: &Message) -> CommandResult {
+    let guild = msg.guild(&ctx.cache).unwrap();
+
+    let manager = songbird::get(ctx).await.unwrap().clone();
+
+    let handler_lock = manager.get(guild.id).unwrap();
+    let handler = handler_lock.lock().await;
+
+    let queue = handler.queue().current_queue();
+
+    if queue.is_empty() {
+        return Err("Queue is empty".into());
+    }
+
+    let track = queue.first().unwrap();
+    let metadata = track.metadata();
+    let title = metadata.title.as_ref().unwrap();
+
+    msg.channel_id
+        .say(&ctx.http, format!("Now playing: {}", title))
+        .await?;
+
+    Ok(())
+}

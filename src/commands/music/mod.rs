@@ -9,5 +9,5 @@ use play::*;
 use queue::*;
 
 #[group]
-#[commands(play, skip, stop, queue, join, leave)]
+#[commands(play, skip, stop, queue, now_playing, join, leave)]
 struct Music;
