@@ -10,7 +10,8 @@ use client::L0C0B0TClient;
 
 #[tokio::main]
 async fn main() {
-    dotenv().expect("Failed to load .env file");
+    // Load environment variables from .env file (if present)
+    let _ = dotenv();
 
     let token = env::var("DISCORD_TOKEN").expect("DISCORD_TOKEN must be set");
 
