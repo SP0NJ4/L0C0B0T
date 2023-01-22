@@ -1,4 +1,4 @@
-// Play control commands
+// Play control
 
 use serenity::{
     framework::standard::{macros::command, Args, CommandResult},
@@ -6,34 +6,32 @@ use serenity::{
     prelude::Context,
 };
 
+use super::{
+    channels::{get_guild_channel, join_channel},
+    queue::{insert_song, QueuePosition},
+};
+
 #[command]
 #[only_in(guilds)]
 #[aliases("p")]
 pub async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let (guild, channel) = get_guild_channel(ctx, msg).await?;
+
     let query = args.rest();
 
-    let guild = msg.guild(&ctx.cache).unwrap();
-    let author = msg.author.id;
-    let channel = guild
-        .voice_states
-        .get(&author)
-        .and_then(|voice_state| voice_state.channel_id)
-        .ok_or("You must be in a voice channel")?;
+    if !query.is_empty() {
+        let source = songbird::input::ytdl_search(&query)
+            .await
+            .map_err(|_| "Failed to find video")?;
 
-    let manager = songbird::get(ctx).await.unwrap().clone();
+        let handler_lock = join_channel(ctx, guild, channel).await?;
 
-    let (handler_lock, success) = manager.join(guild.id, channel).await;
+        insert_song(handler_lock, source, QueuePosition::Last).await?;
 
-    if success.is_err() {
-        return Err("Failed to join voice channel".into());
+        Ok(())
+    } else {
+        Err("No query provided".into())
     }
-
-    let mut handler = handler_lock.lock().await;
-    let source = songbird::input::ytdl_search(&query).await.unwrap();
-
-    handler.enqueue_source(source);
-
-    Ok(())
 }
 
 #[command]

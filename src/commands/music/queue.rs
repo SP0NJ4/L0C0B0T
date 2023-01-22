@@ -1,10 +1,49 @@
-// Queue commands
+// Queue functionality
+
+use std::sync::Arc;
 
 use serenity::{
     framework::standard::{macros::command, CommandResult},
     model::channel::Message,
-    prelude::Context,
+    prelude::{Context, Mutex},
 };
+use songbird::{input::Input, Call};
+
+#[derive(Debug, Clone, Copy)]
+pub(super) enum QueuePosition {
+    Last,
+    Index(usize),
+}
+
+pub(super) async fn insert_song<'a, 'b>(
+    handler_lock: Arc<Mutex<Call>>,
+    source: Input,
+    position: QueuePosition,
+) -> Result<(), &'b str> {
+    let mut handler = handler_lock.lock().await;
+
+    // Add the song to the queue
+    handler.enqueue_source(source);
+
+    // Modify the queue if necessary
+    match position {
+        QueuePosition::Last => Ok(()),
+        QueuePosition::Index(index) => {
+            let queue = handler.queue();
+
+            if index >= queue.len() || index == 0 {
+                return Err("Index out of bounds");
+            }
+
+            queue.modify_queue(move |q| {
+                let song = q.remove(q.len() - 1).unwrap();
+                q.insert(index, song);
+            });
+
+            Ok(())
+        }
+    }
+}
 
 #[command]
 #[only_in(guilds)]
