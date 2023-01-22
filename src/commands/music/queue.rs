@@ -15,11 +15,23 @@ pub(super) enum QueuePosition {
     Index(usize),
 }
 
-pub(super) async fn insert_song<'a, 'b>(
+/// Add a song to the queue in a given position
+///
+/// ## Arguments
+///
+/// * `handler_lock` - A lock to the songbird handler
+/// * `source` - The song to add to the queue
+/// * `position` - The position to add the song to
+///
+/// ## Returns
+///
+/// * `Ok(())` - The song was added to the queue
+/// * `Err(&str)` - The song was not added to the queue
+pub(super) async fn insert_song<'a>(
     handler_lock: Arc<Mutex<Call>>,
     source: Input,
     position: QueuePosition,
-) -> Result<(), &'b str> {
+) -> Result<(), &'a str> {
     let mut handler = handler_lock.lock().await;
 
     // Add the song to the queue

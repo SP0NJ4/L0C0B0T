@@ -12,6 +12,17 @@ use serenity::{
 };
 use songbird::Call;
 
+/// Get the guild and channel the user is in
+///
+/// ## Arguments
+///
+/// * `ctx` - The context of the message
+/// * `msg` - The message to get the guild and channel from
+///
+/// ## Returns
+///
+/// * `Ok((GuildId, ChannelId))` - The guild and channel the user is in
+/// * `Err(&str)` - The user is not in a voice channel
 pub(super) async fn get_guild_channel<'a>(
     ctx: &Context,
     msg: &Message,
@@ -27,6 +38,18 @@ pub(super) async fn get_guild_channel<'a>(
     Ok((guild.id, channel))
 }
 
+/// Join a voice channel
+///
+/// ## Arguments
+///
+/// * `ctx` - The context of the message
+/// * `guild_id` - The guild containing the channel to join
+/// * `channel_id` - The channel to join
+///
+/// ## Returns
+///
+/// * `Ok(Arc<Mutex<Call>>)` - The lock to the songbird handler
+/// * `Err(&str)` - The bot failed to join the voice channel
 pub(super) async fn join_channel<'a>(
     ctx: &Context,
     guild_id: GuildId,
