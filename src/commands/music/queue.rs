@@ -6,6 +6,7 @@ use serenity::{
 
 #[command]
 #[only_in(guilds)]
+#[aliases("p")]
 pub async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let query = args.rest();
 
@@ -35,6 +36,7 @@ pub async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
 #[command]
 #[only_in(guilds)]
+#[aliases("s")]
 pub async fn skip(ctx: &Context, msg: &Message) -> CommandResult {
     let guild = msg.guild(&ctx.cache).unwrap();
 
@@ -50,6 +52,18 @@ pub async fn skip(ctx: &Context, msg: &Message) -> CommandResult {
     }
 
     queue.skip().unwrap();
+
+    Ok(())
+}
+
+#[command]
+#[only_in(guilds)]
+pub async fn stop(ctx: &Context, msg: &Message) -> CommandResult {
+    let guild = msg.guild(&ctx.cache).unwrap();
+
+    let manager = songbird::get(ctx).await.unwrap().clone();
+
+    manager.remove(guild.id).await.unwrap();
 
     Ok(())
 }
