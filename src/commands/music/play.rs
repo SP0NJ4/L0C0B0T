@@ -53,7 +53,18 @@ pub async fn play_top(ctx: &Context, msg: &Message, args: Args) -> CommandResult
 
         let handler_lock = join_channel(ctx, guild, channel).await?;
 
-        insert_song(handler_lock, source, QueuePosition::Index(1)).await?;
+        let song_playing = {
+            let handler = handler_lock.lock().await;
+            handler.queue().current().is_some()
+        };
+
+        if song_playing {
+            // If there is a song playing, insert the new song at index 1
+            insert_song(handler_lock, source, QueuePosition::Index(1)).await?;
+        } else {
+            // If there is no song playing, copy the behavior of play
+            insert_song(handler_lock, source, QueuePosition::Last).await?;
+        }
 
         Ok(())
     } else {
