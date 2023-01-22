@@ -7,5 +7,5 @@ use channels::*;
 use queue::*;
 
 #[group]
-#[commands(play, skip, stop, join, leave)]
+#[commands(play, skip, stop, queue, join, leave)]
 struct Music;
