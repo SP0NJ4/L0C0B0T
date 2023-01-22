@@ -1,3 +1,5 @@
+// Channel commands
+
 use serenity::{
     framework::standard::{macros::command, CommandResult},
     model::channel::Message,
