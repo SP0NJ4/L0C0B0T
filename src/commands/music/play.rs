@@ -74,7 +74,7 @@ pub async fn play_top(ctx: &Context, msg: &Message, args: Args) -> CommandResult
 
 #[command]
 #[only_in(guilds)]
-#[aliases("s")]
+#[aliases("s", "fs")]
 pub async fn skip(ctx: &Context, msg: &Message) -> CommandResult {
     let guild = msg.guild(&ctx.cache).unwrap();
 
