@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use serenity::{
-    framework::standard::{macros::command, CommandResult},
+    framework::standard::{macros::command, Args, CommandResult},
     model::channel::Message,
     prelude::{Context, Mutex},
 };
@@ -123,6 +123,32 @@ pub async fn now_playing(ctx: &Context, msg: &Message) -> CommandResult {
         }
         None => Err("No song playing".into()),
     }
+}
+
+#[command]
+#[only_in(guilds)]
+#[aliases("rm")]
+pub async fn remove(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let index = args.parse::<usize>().map_err(|_| "Invalid index")?;
+
+    let guild = msg.guild(&ctx.cache).unwrap();
+
+    let manager = songbird::get(ctx).await.unwrap().clone();
+
+    let handler_lock = manager.get(guild.id).unwrap();
+    let handler = handler_lock.lock().await;
+
+    let queue = handler.queue();
+
+    if index >= queue.len() || index == 0 {
+        return Err("Index out of bounds".into());
+    }
+
+    handler.queue().modify_queue(|q| {
+        q.remove(index);
+    });
+
+    Ok(())
 }
 
 #[command]
