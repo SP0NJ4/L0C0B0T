@@ -127,6 +127,37 @@ pub async fn now_playing(ctx: &Context, msg: &Message) -> CommandResult {
 
 #[command]
 #[only_in(guilds)]
+#[aliases("i")]
+pub async fn insert(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let index = args.single::<usize>()?;
+    let query = args.rest();
+
+    let guild = msg.guild(&ctx.cache).unwrap();
+
+    let manager = songbird::get(ctx).await.unwrap().clone();
+
+    let handler_lock = manager.get(guild.id).unwrap();
+
+    let source = songbird::input::ytdl_search(&query)
+        .await
+        .map_err(|_| "Failed to find video")?;
+
+    let queue_length = {
+        let handler = handler_lock.lock().await;
+        handler.queue().len()
+    };
+
+    if index > queue_length || index == 0 {
+        return Err("Index out of bounds".into());
+    }
+
+    insert_song(handler_lock, source, QueuePosition::Index(index)).await?;
+
+    Ok(())
+}
+
+#[command]
+#[only_in(guilds)]
 #[aliases("rm")]
 pub async fn remove(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let index = args.parse::<usize>().map_err(|_| "Invalid index")?;
