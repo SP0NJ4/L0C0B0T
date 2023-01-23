@@ -5,6 +5,7 @@ use dotenv::dotenv;
 mod client;
 mod commands;
 mod framework;
+mod globals;
 
 use client::L0C0B0TClient;
 
