@@ -7,7 +7,7 @@ WORKDIR /usr/src/L0C0B0T
 COPY ["Cargo.toml", "Cargo.lock", "./"] 
 ADD src/ src/
 
-RUN apt update && apt install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake
 

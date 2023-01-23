@@ -27,7 +27,7 @@ steps:
       source: /drone/src/l0c0b0t.tar
       delete: true
       script:
-        - docker load < /usr/local/src/l0c0b0t.tar
+        - sudo docker load < /usr/local/src/l0c0b0t.tar
         - sudo systemctl restart L0C0Bot
 
 volumes:
