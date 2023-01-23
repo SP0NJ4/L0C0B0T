@@ -15,7 +15,6 @@ use crate::globals::PRIMARY_COLOR;
 use super::queue::{TrackChannel, TrackRequester};
 
 /// Converts a duration to a string in the format `mm:ss`
-/// TODO: Handle hours
 ///
 /// ## Arguments
 ///
@@ -23,14 +22,20 @@ use super::queue::{TrackChannel, TrackRequester};
 ///
 /// ## Returns
 ///
-/// * `String` - The duration in the format `mm:ss`
+/// * `String` - The duration in the format `hh:mm:ss`
 fn duration_to_minutes(duration: &Duration) -> String {
     let seconds = duration.as_secs();
 
-    let minutes = seconds / 60;
-    let seconds = seconds % 60;
-
-    format!("{}:{:02}", minutes, seconds)
+    if seconds > 3600 {
+        format!(
+            "{}:{:02}:{:02}",
+            seconds / 3600,
+            (seconds % 3600) / 60,
+            seconds % 60
+        )
+    } else {
+        format!("{}:{:02}", seconds / 60, seconds % 60)
+    }
 }
 
 /// Returns the custom track metadata used in response messages. This includes the requester and the
