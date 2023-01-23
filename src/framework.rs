@@ -1,7 +1,8 @@
+use serenity::framework::standard::macros::hook;
 use serenity::framework::StandardFramework;
 
+use crate::commands::music::MUSIC_GROUP;
 use crate::commands::testing::TESTING_GROUP;
-use serenity::framework::standard::macros::hook;
 
 #[hook]
 async fn before(
@@ -20,4 +21,5 @@ pub fn create_framework() -> StandardFramework {
         .configure(|c| c.prefix("!"))
         .before(before)
         .group(&TESTING_GROUP)
+        .group(&MUSIC_GROUP)
 }

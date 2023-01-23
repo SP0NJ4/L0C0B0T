@@ -1,4 +1,5 @@
 use serenity::prelude::*;
+use songbird::serenity::SerenityInit;
 
 use crate::framework::create_framework;
 
@@ -13,6 +14,7 @@ impl L0C0B0TClient {
 
         let client = serenity::Client::builder(token, intents)
             .framework(create_framework())
+            .register_songbird()
             .await?;
 
         Ok(Self { client })
