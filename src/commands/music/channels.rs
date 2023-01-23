@@ -8,7 +8,7 @@ use serenity::{
         channel::Message,
         prelude::{ChannelId, GuildId},
     },
-    prelude::{Context, Mutex},
+    prelude::{Context, Mentionable, Mutex},
 };
 use songbird::Call;
 
@@ -33,7 +33,7 @@ pub(super) async fn get_guild_channel(
         .voice_states
         .get(&msg.author.id)
         .and_then(|vs| vs.channel_id)
-        .ok_or("You must be in a voice channel")?;
+        .ok_or("Tenés que estar conectado a un canal de voz")?;
 
     Ok((guild.id, channel))
 }
@@ -61,7 +61,7 @@ pub(super) async fn join_channel(
 
     success
         .map(|_| handler_lock)
-        .map_err(|_| "Failed to join voice channel".into())
+        .map_err(|_| "No me pude unir al canal".into())
 }
 
 /////////////////////////
@@ -73,10 +73,18 @@ pub(super) async fn join_channel(
 pub async fn join(ctx: &Context, msg: &Message) -> CommandResult {
     let (guild, channel) = get_guild_channel(ctx, msg).await?;
 
-    join_channel(ctx, guild, channel)
-        .await
-        .map(|_| ())
-        .map_err(|e| e.into())
+    join_channel(ctx, guild, channel).await.map(|_| ())?;
+
+    let channel_mention = channel.mention();
+
+    msg.channel_id
+        .say(
+            &ctx.http,
+            format!("**Conectando a {}...**", channel_mention),
+        )
+        .await?;
+
+    Ok(())
 }
 
 #[command]
@@ -90,5 +98,9 @@ pub async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
     manager
         .remove(guild.id)
         .await
-        .map_err(|_| "Failed to leave voice channel".into())
+        .map_err(|_| "No estoy en ningún canal")?;
+
+    msg.channel_id.say(&ctx.http, "Chau 😔").await?;
+
+    Ok(())
 }
