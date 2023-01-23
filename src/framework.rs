@@ -1,17 +1,17 @@
-use serenity::framework::standard::macros::hook;
-use serenity::framework::standard::CommandError;
-use serenity::framework::StandardFramework;
+use serenity::framework::{
+    standard::{macros::hook, CommandError},
+    StandardFramework,
+};
 
-use crate::commands::music::MUSIC_GROUP;
-use crate::commands::testing::TESTING_GROUP;
+use crate::commands::{music::MUSIC_GROUP, testing::TESTING_GROUP};
 
 #[hook]
 async fn before(
     _ctx: &serenity::client::Context,
     _msg: &serenity::model::channel::Message,
-    _cmd_name: &str,
+    cmd_name: &str,
 ) -> bool {
-    println!("Running {} command", _cmd_name);
+    println!("Running {} command", cmd_name);
     true
 }
 #[hook]
