@@ -7,6 +7,11 @@ WORKDIR /usr/src/L0C0B0T
 COPY ["Cargo.toml", "Cargo.lock", "./"] 
 ADD src/ src/
 
+RUN apt update && apt install -y --no-install-recommends \
+    linux-headers-$(uname -r) \
+    build-essential \
+    cmake
+
 # Compile and install
 RUN cargo install --path .
 
