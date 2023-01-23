@@ -6,7 +6,7 @@ steps:
   - name: build
     image: docker:dind
     commands:
-      - docker build -t l0c0b0t --build-var "EXT_DISCORD_TOKEN=$(echo $DISCORD_TOKEN)" .
+      - docker build -t l0c0b0t --build-arg "EXT_DISCORD_TOKEN=$(echo $DISCORD_TOKEN)" .
       - docker save l0c0b0t > /drone/src/l0c0b0t.tar
     environment:
       DISCORD_TOKEN:
@@ -38,6 +38,6 @@ volumes:
 trigger:
   branch:
     - master
-    - develop
+    - ci
   event:
     - push
