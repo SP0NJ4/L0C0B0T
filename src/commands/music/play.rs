@@ -278,7 +278,9 @@ pub async fn seek(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
     let position = parse_duration(arg).ok_or(MusicCommandError::InvalidTime)?;
 
-    track.seek_time(position).unwrap();
+    track
+        .seek_time(position)
+        .map_err(|_| MusicCommandError::SeekFailed)?;
 
     msg.channel_id
         .say(&ctx.http, song_seeked_response(&track, position))
