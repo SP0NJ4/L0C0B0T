@@ -1,94 +1,16 @@
 // Queue functionality
 
-use std::sync::Arc;
-
 use serenity::{
     framework::standard::{macros::command, Args, CommandResult},
-    model::{
-        channel::Message,
-        prelude::{ChannelId, UserId},
-    },
-    prelude::{Context, Mutex, TypeMapKey},
+    model::channel::Message,
+    prelude::Context,
 };
-use songbird::{input::Input, Call};
 
 use super::{
     errors::MusicCommandError,
     responses::{now_playing_embed, queue_embed, searching_response, song_added_embed},
+    utils::{insert_song, QueuePosition},
 };
-
-#[derive(Debug, Clone, Copy)]
-pub(super) enum QueuePosition {
-    Last,
-    Index(usize),
-}
-
-pub(super) struct TrackRequester;
-
-impl TypeMapKey for TrackRequester {
-    type Value = UserId;
-}
-
-pub(super) struct TrackChannel;
-
-impl TypeMapKey for TrackChannel {
-    type Value = ChannelId;
-}
-
-/// Add a song to the queue in a given position
-///
-/// ## Arguments
-///
-/// * `requester` - The user who requested the song
-/// * `handler_lock` - A lock to the songbird handler
-/// * `source` - The song to add to the queue
-/// * `position` - The position to add the song to
-///
-/// ## Returns
-///
-/// * `Ok(usize)` - The index of the song in the queue
-/// * `Err(&str)` - The song was not added to the queue
-pub(super) async fn insert_song(
-    requester: UserId,
-    channel: ChannelId,
-    handler_lock: Arc<Mutex<Call>>,
-    source: Input,
-    position: QueuePosition,
-) -> Result<usize, &'static str> {
-    let mut handler = handler_lock.lock().await;
-
-    // Add the song to the queue
-    let handle = handler.enqueue_source(source);
-
-    // Add custom metadata to the song
-    {
-        let mut typemap = handle.typemap().write().await;
-
-        typemap.insert::<TrackRequester>(requester);
-        typemap.insert::<TrackChannel>(channel);
-    }
-
-    // Modify the queue if necessary
-    let queue = handler.queue();
-
-    match position {
-        QueuePosition::Last => Ok(queue.len() - 1),
-        QueuePosition::Index(index) => {
-            let queue = handler.queue();
-
-            if index >= queue.len() || index == 0 {
-                return Err(MusicCommandError::InvalidQueueIndex.into());
-            }
-
-            queue.modify_queue(move |q| {
-                let song = q.remove(q.len() - 1).unwrap();
-                q.insert(index, song);
-            });
-
-            Ok(index)
-        }
-    }
-}
 
 /////////////////////////
 //      Commands       //

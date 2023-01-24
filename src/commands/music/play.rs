@@ -1,95 +1,18 @@
 // Playback control
 
-use std::{sync::Arc, time::Duration};
-
-use regex::Regex;
 use serenity::{
     framework::standard::{macros::command, Args, CommandResult},
     model::channel::Message,
-    prelude::{Context, Mutex},
+    prelude::Context,
 };
-use songbird::Call;
 
 use super::{
-    channels::{get_guild_channel, join_channel},
     errors::MusicCommandError,
-    queue::{insert_song, QueuePosition},
     responses::{
         searching_response, song_added_embed, song_seeked_response, song_skipped_response,
     },
+    utils::{get_guild_channel, join_channel, parse_duration, pause_song, resume_song, insert_song, QueuePosition},
 };
-
-pub(super) async fn pause_song(handler_lock: Arc<Mutex<Call>>) -> Result<(), &'static str> {
-    let handler = handler_lock.lock().await;
-
-    let queue = handler.queue();
-
-    if queue.current().is_none() {
-        return Err("No hay canción tocando");
-    }
-
-    handler.queue().pause().map_err(|_| "Error al pausar")?;
-
-    Ok(())
-}
-
-pub(super) async fn resume_song(handler_lock: Arc<Mutex<Call>>) -> Result<(), &'static str> {
-    let handler = handler_lock.lock().await;
-
-    let queue = handler.queue();
-
-    if queue.current().is_none() {
-        return Err("No hay canción tocando");
-    }
-
-    handler.queue().resume().map_err(|_| "Error al resumir")?;
-
-    Ok(())
-}
-
-const DURATION_PATTERN: &str = r"^(?:(?:([01]?\d|2[0-3]):)?([0-5]?\d):)?([0-5]?\d)$";
-
-/// Parses a string in the format `hh:mm:ss` or `sss` to a `Duration`
-///
-/// ## Arguments
-///
-/// * `input` - The string to parse
-///
-/// ## Returns
-///
-/// * `Some(Duration)` - The parsed duration
-/// * `None` - The string was not in the correct format
-fn parse_duration(input: &str) -> Option<Duration> {
-    // If the input is a number, it's a duration in seconds
-    if let Ok(seconds) = input.parse::<u64>() {
-        return Some(Duration::from_secs(seconds));
-    }
-
-    // Otherwise, it's a duration in the format `hh:mm:ss`
-    let captures = Regex::new(DURATION_PATTERN).unwrap().captures(input)?;
-
-    let mut result = Duration::new(0, 0);
-
-    if let Some(hours) = captures.get(1) {
-        let hours = hours.as_str().parse::<u64>().unwrap();
-
-        result += Duration::from_secs(hours * 3600);
-    }
-
-    let minutes = captures.get(2)?.as_str().parse::<u64>().unwrap();
-
-    result += Duration::from_secs(minutes * 60);
-
-    let seconds = captures.get(3)?.as_str().parse::<u64>().unwrap();
-
-    result += Duration::from_secs(seconds);
-
-    Some(result)
-}
-
-/////////////////////////
-//      Commands       //
-/////////////////////////
 
 #[command]
 #[only_in(guilds)]

@@ -12,7 +12,7 @@ use songbird::tracks::TrackHandle;
 
 use crate::globals::PRIMARY_COLOR;
 
-use super::queue::{TrackChannel, TrackRequester};
+use super::utils::{TrackChannel, TrackRequester};
 
 /// Converts a duration to a string in the format `mm:ss`
 ///
