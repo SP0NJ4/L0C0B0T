@@ -12,6 +12,8 @@ use serenity::{
 };
 use songbird::Call;
 
+use super::errors::MusicCommandError;
+
 /// Get the guild and channel the user is in
 ///
 /// ## Arguments
@@ -33,7 +35,7 @@ pub(super) async fn get_guild_channel(
         .voice_states
         .get(&msg.author.id)
         .and_then(|vs| vs.channel_id)
-        .ok_or("Tenés que estar conectado a un canal de voz")?;
+        .ok_or(MusicCommandError::NoVoiceChannel)?;
 
     Ok((guild.id, channel))
 }
@@ -61,7 +63,7 @@ pub(super) async fn join_channel(
 
     success
         .map(|_| handler_lock)
-        .map_err(|_| "No me pude unir al canal".into())
+        .map_err(|_| MusicCommandError::FailedToJoinChannel.into())
 }
 
 /////////////////////////
@@ -98,7 +100,7 @@ pub async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
     manager
         .remove(guild.id)
         .await
-        .map_err(|_| "No estoy en ningún canal")?;
+        .map_err(|_| MusicCommandError::NotInVoiceChannel)?;
 
     msg.channel_id.say(&ctx.http, "Chau 😔").await?;
 

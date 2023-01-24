@@ -12,7 +12,10 @@ use serenity::{
 };
 use songbird::{input::Input, Call};
 
-use super::responses::{now_playing_embed, queue_embed, searching_response, song_added_embed};
+use super::{
+    errors::MusicCommandError,
+    responses::{now_playing_embed, queue_embed, searching_response, song_added_embed},
+};
 
 #[derive(Debug, Clone, Copy)]
 pub(super) enum QueuePosition {
@@ -74,7 +77,7 @@ pub(super) async fn insert_song(
             let queue = handler.queue();
 
             if index >= queue.len() || index == 0 {
-                return Err("Posición inválida");
+                return Err(MusicCommandError::InvalidQueueIndex.into());
             }
 
             queue.modify_queue(move |q| {
@@ -105,7 +108,7 @@ pub async fn queue(ctx: &Context, msg: &Message) -> CommandResult {
     let queue = handler.queue();
 
     if queue.current().is_none() {
-        return Err("No estoy tocando nada".into());
+        return Err(MusicCommandError::NoSongPlaying.into());
     }
 
     let embed = queue_embed(ctx, &queue.current_queue()).await;
@@ -128,20 +131,18 @@ pub async fn now_playing(ctx: &Context, msg: &Message) -> CommandResult {
     let handler_lock = manager.get(guild.id).unwrap();
     let handler = handler_lock.lock().await;
 
-    let current_track = handler.queue().current();
+    let track = handler
+        .queue()
+        .current()
+        .ok_or(MusicCommandError::NoSongPlaying)?;
 
-    match current_track {
-        Some(track) => {
-            let embed = now_playing_embed(ctx, &track).await;
+    let embed = now_playing_embed(ctx, &track).await;
 
-            msg.channel_id
-                .send_message(&ctx.http, |m| m.set_embed(embed))
-                .await?;
+    msg.channel_id
+        .send_message(&ctx.http, |m| m.set_embed(embed))
+        .await?;
 
-            Ok(())
-        }
-        None => Err("No hay canción".into()),
-    }
+    Ok(())
 }
 
 #[command]
@@ -160,7 +161,7 @@ pub async fn insert(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
     msg.reply(ctx, searching_response(query)).await?;
     let source = songbird::input::ytdl_search(&query)
         .await
-        .map_err(|_| "No encontré el video")?;
+        .map_err(|_| MusicCommandError::FailedVideoSearch)?;
 
     let queue_length = {
         let handler = handler_lock.lock().await;
@@ -168,7 +169,7 @@ pub async fn insert(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
     };
 
     if index > queue_length || index == 0 {
-        return Err("Posición inválida".into());
+        return Err(MusicCommandError::InvalidQueueIndex.into());
     }
 
     let position = insert_song(
@@ -210,7 +211,7 @@ pub async fn remove(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let queue = handler.queue();
 
     if index >= queue.len() || index == 0 {
-        return Err("Posición inválida".into());
+        return Err(MusicCommandError::InvalidQueueIndex.into());
     }
 
     let mut removed_title: String = String::new();
@@ -242,7 +243,7 @@ pub async fn clear(ctx: &Context, msg: &Message) -> CommandResult {
     let queue = handler.queue();
 
     if queue.len() <= 1 {
-        Err("La cola está vacía".into())
+        Err(MusicCommandError::EmptyQueue.into())
     } else {
         handler.queue().modify_queue(|q| {
             q.drain(1..);

@@ -1,5 +1,6 @@
 use serenity::framework::standard::macros::group;
 
+mod errors;
 mod responses;
 mod channels;
 mod play;
