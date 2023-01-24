@@ -1,10 +1,12 @@
 use serenity::framework::standard::macros::group;
 
 mod errors;
-mod responses;
+mod utils;
+
 mod channels;
 mod play;
 mod queue;
+mod responses;
 
 use channels::*;
 use play::*;
