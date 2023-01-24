@@ -250,3 +250,15 @@ pub(super) async fn queue_embed(ctx: &Context, queue: &Vec<TrackHandle>) -> Crea
 
     embed
 }
+
+pub(super) fn song_seeked_response(track: &TrackHandle, position: Duration) -> String {
+    let metadata = track.metadata();
+    let title = metadata.title.as_ref().unwrap();
+
+    MessageBuilder::new()
+        .push_bold_safe("⏩ **Saltando a**: ")
+        .push_mono_safe(duration_to_minutes(&position))
+        .push(" | ")
+        .push_mono_safe(title)
+        .build()
+}

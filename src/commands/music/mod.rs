@@ -16,6 +16,7 @@ use queue::*;
     skip,
     pause,
     stop,
+    seek,
     queue,
     now_playing,
     insert,
