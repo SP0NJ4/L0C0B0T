@@ -20,6 +20,9 @@ jobs:
           override: true
           components: clippy, rustfmt
 
+      - name: Set up cache
+        uses: Swatinem/rust-cache@v2
+
       - name: Build
         uses: actions-rs/cargo@v1
         with:
