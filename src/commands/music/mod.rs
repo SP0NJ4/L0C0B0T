@@ -1,9 +1,12 @@
 use serenity::framework::standard::macros::group;
 
-mod responses;
+mod errors;
+mod utils;
+
 mod channels;
 mod play;
 mod queue;
+mod responses;
 
 use channels::*;
 use play::*;
@@ -16,9 +19,11 @@ use queue::*;
     skip,
     pause,
     stop,
+    seek,
     queue,
     now_playing,
     insert,
+    move_,
     remove,
     clear,
     join,
