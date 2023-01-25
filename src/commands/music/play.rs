@@ -11,7 +11,10 @@ use super::{
     responses::{
         searching_response, song_added_embed, song_seeked_response, song_skipped_response,
     },
-    utils::{get_guild_channel, join_channel, parse_duration, pause_song, resume_song, insert_song, QueuePosition},
+    utils::{
+        get_guild_channel, insert_song, join_channel, parse_duration, pause_song, resume_song,
+        search_song, QueuePosition,
+    },
 };
 
 #[command]
@@ -25,10 +28,7 @@ pub async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     if !query.is_empty() {
         // If there is a query, search for a video and play it
         msg.reply(ctx, searching_response(query)).await?;
-
-        let source = songbird::input::ytdl_search(&query)
-            .await
-            .map_err(|_| MusicCommandError::FailedVideoSearch)?;
+        let source = search_song(query).await?;
 
         let handler_lock = join_channel(ctx, guild, channel).await?;
 
@@ -36,7 +36,7 @@ pub async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             msg.author.id,
             channel,
             handler_lock.clone(),
-            source,
+            source.into(),
             QueuePosition::Last,
         )
         .await?;
@@ -72,10 +72,7 @@ pub async fn play_top(ctx: &Context, msg: &Message, args: Args) -> CommandResult
     let query = args.rest();
 
     msg.reply(ctx, searching_response(query)).await?;
-
-    let source = songbird::input::ytdl_search(&query)
-        .await
-        .map_err(|_| MusicCommandError::FailedVideoSearch)?;
+    let source = search_song(query).await?;
 
     let handler_lock = join_channel(ctx, guild, channel).await?;
 
@@ -96,7 +93,7 @@ pub async fn play_top(ctx: &Context, msg: &Message, args: Args) -> CommandResult
         msg.author.id,
         channel,
         handler_lock.clone(),
-        source,
+        source.into(),
         position,
     )
     .await?;
@@ -201,12 +198,18 @@ pub async fn seek(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
     let position = parse_duration(arg).ok_or(MusicCommandError::InvalidTime)?;
 
+    let duration = track.metadata().duration.unwrap();
+
+    if position > duration {
+        return Err(MusicCommandError::InvalidTime.into());
+    }
+
     track
         .seek_time(position)
         .map_err(|_| MusicCommandError::SeekFailed)?;
 
     msg.channel_id
-        .say(&ctx.http, song_seeked_response(&track, position))
+        .say(&ctx.http, song_seeked_response(position))
         .await?;
 
     Ok(())

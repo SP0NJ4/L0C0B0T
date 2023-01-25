@@ -14,6 +14,7 @@ pub enum MusicCommandError {
     FailedToJoinChannel,
     NotInVoiceChannel,
     SeekFailed,
+    Other(&'static str),
 }
 
 impl From<MusicCommandError> for &'static str {
@@ -28,6 +29,7 @@ impl From<MusicCommandError> for &'static str {
             MusicCommandError::FailedToJoinChannel => "No me pude unir al canal",
             MusicCommandError::NotInVoiceChannel => "No estoy en un canal de voz",
             MusicCommandError::SeekFailed => "Este formato no se puede seekear",
+            MusicCommandError::Other(msg) => msg,
         }
     }
 }
