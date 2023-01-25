@@ -2,6 +2,7 @@
 
 use std::{sync::Arc, time::Duration};
 
+use lazy_static::lazy_static;
 use regex::Regex;
 use serenity::{
     model::{
@@ -123,7 +124,10 @@ pub(super) async fn resume_song(handler_lock: Arc<Mutex<Call>>) -> Result<(), Mu
     Ok(())
 }
 
-const DURATION_PATTERN: &str = r"^(?:(?:([01]?\d|2[0-3]):)?([0-5]?\d):)?([0-5]?\d)$";
+lazy_static! {
+    static ref DURATION_REGEX: Regex =
+        Regex::new(r"^(?:(?:([01]?\d|2[0-3]):)?([0-5]?\d):)?([0-5]?\d)$").unwrap();
+}
 
 /// Parses a string in the format `hh:mm:ss` or `sss` to a `Duration`
 ///
@@ -142,7 +146,7 @@ pub(super) fn parse_duration(input: &str) -> Option<Duration> {
     }
 
     // Otherwise, it's a duration in the format `hh:mm:ss`
-    let captures = Regex::new(DURATION_PATTERN).unwrap().captures(input)?;
+    let captures = DURATION_REGEX.captures(input)?;
 
     let mut result = Duration::new(0, 0);
 
