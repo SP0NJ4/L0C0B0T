@@ -12,10 +12,9 @@ use songbird::tracks::TrackHandle;
 
 use crate::globals::PRIMARY_COLOR;
 
-use super::queue::{TrackChannel, TrackRequester};
+use super::utils::{TrackChannel, TrackRequester};
 
 /// Converts a duration to a string in the format `mm:ss`
-/// TODO: Handle hours
 ///
 /// ## Arguments
 ///
@@ -23,14 +22,20 @@ use super::queue::{TrackChannel, TrackRequester};
 ///
 /// ## Returns
 ///
-/// * `String` - The duration in the format `mm:ss`
+/// * `String` - The duration in the format `hh:mm:ss`
 fn duration_to_minutes(duration: &Duration) -> String {
     let seconds = duration.as_secs();
 
-    let minutes = seconds / 60;
-    let seconds = seconds % 60;
-
-    format!("{}:{:02}", minutes, seconds)
+    if seconds > 3600 {
+        format!(
+            "{}:{:02}:{:02}",
+            seconds / 3600,
+            (seconds % 3600) / 60,
+            seconds % 60
+        )
+    } else {
+        format!("{}:{:02}", seconds / 60, seconds % 60)
+    }
 }
 
 /// Returns the custom track metadata used in response messages. This includes the requester and the
@@ -146,6 +151,13 @@ pub(super) fn song_skipped_response(track: &TrackHandle) -> String {
         .build()
 }
 
+pub(super) fn song_seeked_response(position: Duration) -> String {
+    MessageBuilder::new()
+        .push_bold_safe("⏩ Saltando a: ")
+        .push_mono_safe(duration_to_minutes(&position))
+        .build()
+}
+
 pub(super) async fn now_playing_embed(ctx: &Context, track: &TrackHandle) -> CreateEmbed {
     let metadata = track.metadata();
     let title = metadata.title.as_ref().unwrap();
@@ -218,8 +230,10 @@ pub(super) async fn queue_embed(ctx: &Context, queue: &Vec<TrackHandle>) -> Crea
     if !rest.is_empty() {
         description.push_underline_line("Próximas:");
 
-        for track in rest {
-            description.push_line(queue_item(ctx, track).await);
+        for (i, track) in rest.iter().enumerate() {
+            let item = queue_item(ctx, track).await;
+            let index = i + 1;
+            description.push_line(format!("**{index}.** {item}"));
         }
     }
 
