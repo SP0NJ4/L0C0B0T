@@ -9,7 +9,7 @@ use serenity::{
 use super::{
     errors::MusicCommandError,
     responses::{now_playing_embed, queue_embed, searching_response, song_added_embed},
-    utils::{insert_song, QueuePosition},
+    utils::{insert_song, search_song, QueuePosition},
 };
 
 /////////////////////////
@@ -81,9 +81,7 @@ pub async fn insert(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
     let handler_lock = manager.get(guild.id).unwrap();
 
     msg.reply(ctx, searching_response(query)).await?;
-    let source = songbird::input::ytdl_search(&query)
-        .await
-        .map_err(|_| MusicCommandError::FailedVideoSearch)?;
+    let source = search_song(query).await?;
 
     let queue_length = {
         let handler = handler_lock.lock().await;
@@ -98,7 +96,7 @@ pub async fn insert(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
         msg.author.id,
         msg.channel_id,
         handler_lock.clone(),
-        source,
+        source.into(),
         QueuePosition::Index(index),
     )
     .await?;

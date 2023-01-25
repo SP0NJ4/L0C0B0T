@@ -10,7 +10,10 @@ use serenity::{
     },
     prelude::{Context, Mutex, TypeMapKey},
 };
-use songbird::{input::Input, Call};
+use songbird::{
+    input::{Input, Restartable},
+    Call,
+};
 
 use super::errors::MusicCommandError;
 
@@ -56,14 +59,14 @@ pub(super) async fn join_channel(
     ctx: &Context,
     guild_id: GuildId,
     channel_id: ChannelId,
-) -> Result<Arc<Mutex<Call>>, &'static str> {
+) -> Result<Arc<Mutex<Call>>, MusicCommandError> {
     let manager = songbird::get(ctx).await.unwrap().clone();
 
     let (handler_lock, success) = manager.join(guild_id, channel_id).await;
 
     success
         .map(|_| handler_lock)
-        .map_err(|_| MusicCommandError::FailedToJoinChannel.into())
+        .map_err(|_| MusicCommandError::FailedToJoinChannel)
 }
 
 /// Pauses the current song
@@ -76,16 +79,19 @@ pub(super) async fn join_channel(
 ///
 /// * `Ok(())` - The song was paused
 /// * `Err(&str)` - The song was not paused
-pub(super) async fn pause_song(handler_lock: Arc<Mutex<Call>>) -> Result<(), &'static str> {
+pub(super) async fn pause_song(handler_lock: Arc<Mutex<Call>>) -> Result<(), MusicCommandError> {
     let handler = handler_lock.lock().await;
 
     let queue = handler.queue();
 
     if queue.current().is_none() {
-        return Err("No hay canción tocando");
+        return Err(MusicCommandError::NoSongPlaying);
     }
 
-    handler.queue().pause().map_err(|_| "Error al pausar")?;
+    handler
+        .queue()
+        .pause()
+        .map_err(|_| MusicCommandError::Other("Error al pausar"))?;
 
     Ok(())
 }
@@ -100,16 +106,19 @@ pub(super) async fn pause_song(handler_lock: Arc<Mutex<Call>>) -> Result<(), &'s
 ///
 /// * `Ok(())` - The song was resumed
 /// * `Err(&str)` - The song was not resumed
-pub(super) async fn resume_song(handler_lock: Arc<Mutex<Call>>) -> Result<(), &'static str> {
+pub(super) async fn resume_song(handler_lock: Arc<Mutex<Call>>) -> Result<(), MusicCommandError> {
     let handler = handler_lock.lock().await;
 
     let queue = handler.queue();
 
     if queue.current().is_none() {
-        return Err("No hay canción tocando");
+        return Err(MusicCommandError::NoSongPlaying);
     }
 
-    handler.queue().resume().map_err(|_| "Error al resumir")?;
+    handler
+        .queue()
+        .resume()
+        .map_err(|_| MusicCommandError::Other("Error al reanudar"))?;
 
     Ok(())
 }
@@ -191,7 +200,7 @@ pub(super) async fn insert_song(
     handler_lock: Arc<Mutex<Call>>,
     source: Input,
     position: QueuePosition,
-) -> Result<usize, &'static str> {
+) -> Result<usize, MusicCommandError> {
     let mut handler = handler_lock.lock().await;
 
     // Add the song to the queue
@@ -214,7 +223,7 @@ pub(super) async fn insert_song(
             let queue = handler.queue();
 
             if index >= queue.len() || index == 0 {
-                return Err(MusicCommandError::InvalidQueueIndex.into());
+                return Err(MusicCommandError::InvalidQueueIndex);
             }
 
             queue.modify_queue(move |q| {
@@ -225,4 +234,20 @@ pub(super) async fn insert_song(
             Ok(index)
         }
     }
+}
+
+/// Searches for a song in youtube
+///
+/// ## Arguments
+///
+/// * `query` - The query to search for
+///
+/// ## Returns
+///
+/// * `Ok(Input)` - The song was found
+/// * `Err(MusicCommandError)` - The song was not found
+pub(super) async fn search_song(query: &str) -> Result<Restartable, MusicCommandError> {
+    Restartable::ytdl_search(query, true)
+        .await
+        .map_err(|_| MusicCommandError::FailedVideoSearch)
 }
