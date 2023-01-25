@@ -33,3 +33,9 @@ La otra opción es correr el L0C0B0T en un container de [Docker](https://www.doc
 docker build -t l0c0bot .
 docker run -it --name l0c0bot l0c0bot
 ```
+
+También pueden usar la imagen de Docker que subimos al GitHub Container Registry:
+
+```bash
+docker run -it ghcr.io/sp0nj4/l0c0b0t:latest
+```
