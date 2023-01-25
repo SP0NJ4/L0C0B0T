@@ -1,0 +1,5 @@
+{
+    "yaml.schemas": {
+        "https://json.schemastore.org/github-workflow.json": "file:///home/sponja/Projects/L0C0B0T/.github/workflows/deploy.yml"
+    }
+}
