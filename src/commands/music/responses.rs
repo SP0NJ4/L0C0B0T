@@ -151,6 +151,13 @@ pub(super) fn song_skipped_response(track: &TrackHandle) -> String {
         .build()
 }
 
+pub(super) fn song_seeked_response(position: Duration) -> String {
+    MessageBuilder::new()
+        .push_bold_safe("⏩ Saltando a: ")
+        .push_mono_safe(duration_to_minutes(&position))
+        .build()
+}
+
 pub(super) async fn now_playing_embed(ctx: &Context, track: &TrackHandle) -> CreateEmbed {
     let metadata = track.metadata();
     let title = metadata.title.as_ref().unwrap();
@@ -223,8 +230,10 @@ pub(super) async fn queue_embed(ctx: &Context, queue: &Vec<TrackHandle>) -> Crea
     if !rest.is_empty() {
         description.push_underline_line("Próximas:");
 
-        for track in rest {
-            description.push_line(queue_item(ctx, track).await);
+        for (i, track) in rest.iter().enumerate() {
+            let item = queue_item(ctx, track).await;
+            let index = i + 1;
+            description.push_line(format!("**{index}.** {item}"));
         }
     }
 
@@ -249,11 +258,4 @@ pub(super) async fn queue_embed(ctx: &Context, queue: &Vec<TrackHandle>) -> Crea
     });
 
     embed
-}
-
-pub(super) fn song_seeked_response(position: Duration) -> String {
-    MessageBuilder::new()
-        .push_bold_safe("⏩ Saltando a: ")
-        .push_mono_safe(duration_to_minutes(&position))
-        .build()
 }
