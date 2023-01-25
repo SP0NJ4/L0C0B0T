@@ -38,6 +38,5 @@ volumes:
 trigger:
   branch:
     - master
-    - feat/ci
   event:
     - push
