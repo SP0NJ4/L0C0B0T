@@ -23,6 +23,7 @@ use queue::*;
     queue,
     now_playing,
     insert,
+    move_,
     remove,
     clear,
     join,

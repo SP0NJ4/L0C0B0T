@@ -152,6 +152,49 @@ pub async fn remove(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
 #[command]
 #[only_in(guilds)]
+#[aliases("move", "mv")]
+pub async fn move_(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let from = args.single::<usize>()?;
+    let to = args.single::<usize>()?;
+
+    let guild = msg.guild(&ctx.cache).unwrap();
+
+    let manager = songbird::get(ctx).await.unwrap().clone();
+
+    let handler_lock = manager.get(guild.id).unwrap();
+    let handler = handler_lock.lock().await;
+
+    let queue = handler.queue();
+
+    if from >= queue.len() || from == 0 {
+        return Err(MusicCommandError::InvalidQueueIndex.into());
+    }
+
+    if to >= queue.len() || to == 0 {
+        return Err(MusicCommandError::InvalidQueueIndex.into());
+    }
+
+    let mut moved_title: String = String::new();
+
+    handler.queue().modify_queue(|q| {
+        let track = q.remove(from).unwrap();
+        moved_title = track.metadata().title.clone().unwrap();
+
+        q.insert(to, track);
+    });
+
+    msg.channel_id
+        .say(
+            &ctx.http,
+            format!("🚚 **{moved_title}** fue movida a la posición {to}"),
+        )
+        .await?;
+
+    Ok(())
+}
+
+#[command]
+#[only_in(guilds)]
 pub async fn clear(ctx: &Context, msg: &Message) -> CommandResult {
     let guild = msg.guild(&ctx.cache).unwrap();
 
