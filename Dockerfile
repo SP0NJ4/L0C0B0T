@@ -10,6 +10,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends cmake
 COPY ["Cargo.toml", "Cargo.lock", "./"] 
 ADD src/ src/
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake
+
 # Compile and install
 RUN cargo install --path .
 
