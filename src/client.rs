@@ -9,8 +9,7 @@ pub struct L0C0B0TClient {
 
 impl L0C0B0TClient {
     pub async fn new(token: &str) -> Result<Self, serenity::Error> {
-        let intents = GatewayIntents::non_privileged()
-            | GatewayIntents::MESSAGE_CONTENT;
+        let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
 
         let client = serenity::Client::builder(token, intents)
             .framework(create_framework())
