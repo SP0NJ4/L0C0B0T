@@ -1,0 +1,43 @@
+kind: pipeline
+type: docker
+name: default
+
+steps:
+  - name: build
+    image: docker:dind
+    commands:
+      - docker build -t l0c0b0t --build-var "EXT_DISCORD_TOKEN=$(echo $DISCORD_TOKEN)" .
+      - docker save l0c0b0t > /drone/src/l0c0b0t.tar
+    environment:
+      DISCORD_TOKEN:
+        from_secret: discord_token
+    volumes:
+      - name: dockersock
+        path: /var/run/docker.sock
+
+  - name: deploy
+    image: drillster/drone-rsync
+    settings:
+      hosts: void.ar
+      port: 22
+      user: ci
+      key:
+        from_secret: deploy_key
+      target: /usr/local/src/
+      source: /drone/src/l0c0b0t.tar
+      delete: true
+      script:
+        - docker load < /usr/local/src/l0c0b0t.tar
+        - sudo systemctl restart L0C0Bot
+
+volumes:
+  - name: dockersock
+    host:
+      path: /var/run/docker.sock
+
+trigger:
+  branch:
+    - master
+    - develop
+  event:
+    - push

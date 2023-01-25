@@ -13,6 +13,9 @@ RUN cargo install --path .
 ### Stage 2: Run ###
 FROM debian:stable-slim
 
+ARG EXT_DISCORD_TOKEN
+ENV DISCORD_TOKEN=$EXT_DISCORD_TOKEN
+
 # Install aditional runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \

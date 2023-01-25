@@ -1,68 +1,15 @@
 // Channel
 
-use std::sync::Arc;
-
 use serenity::{
     framework::standard::{macros::command, CommandResult},
-    model::{
-        channel::Message,
-        prelude::{ChannelId, GuildId},
-    },
-    prelude::{Context, Mentionable, Mutex},
+    model::channel::Message,
+    prelude::{Context, Mentionable},
 };
-use songbird::Call;
 
-/// Get the guild and channel the user is in
-///
-/// ## Arguments
-///
-/// * `ctx` - The context of the message
-/// * `msg` - The message to get the guild and channel from
-///
-/// ## Returns
-///
-/// * `Ok((GuildId, ChannelId))` - The guild and channel the user is in
-/// * `Err(&str)` - The user is not in a voice channel
-pub(super) async fn get_guild_channel(
-    ctx: &Context,
-    msg: &Message,
-) -> Result<(GuildId, ChannelId), &'static str> {
-    let guild = msg.guild(&ctx.cache).unwrap();
-
-    let channel = guild
-        .voice_states
-        .get(&msg.author.id)
-        .and_then(|vs| vs.channel_id)
-        .ok_or("Tenés que estar conectado a un canal de voz")?;
-
-    Ok((guild.id, channel))
-}
-
-/// Join a voice channel
-///
-/// ## Arguments
-///
-/// * `ctx` - The context of the message
-/// * `guild_id` - The guild containing the channel to join
-/// * `channel_id` - The channel to join
-///
-/// ## Returns
-///
-/// * `Ok(Arc<Mutex<Call>>)` - The lock to the songbird handler
-/// * `Err(&str)` - The bot failed to join the voice channel
-pub(super) async fn join_channel(
-    ctx: &Context,
-    guild_id: GuildId,
-    channel_id: ChannelId,
-) -> Result<Arc<Mutex<Call>>, &'static str> {
-    let manager = songbird::get(ctx).await.unwrap().clone();
-
-    let (handler_lock, success) = manager.join(guild_id, channel_id).await;
-
-    success
-        .map(|_| handler_lock)
-        .map_err(|_| "No me pude unir al canal".into())
-}
+use super::{
+    errors::MusicCommandError,
+    utils::{get_guild_channel, join_channel},
+};
 
 /////////////////////////
 //      Commands       //
@@ -98,7 +45,7 @@ pub async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
     manager
         .remove(guild.id)
         .await
-        .map_err(|_| "No estoy en ningún canal")?;
+        .map_err(|_| MusicCommandError::NotInVoiceChannel)?;
 
     msg.channel_id.say(&ctx.http, "Chau 😔").await?;
 
