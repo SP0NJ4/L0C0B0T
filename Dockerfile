@@ -3,6 +3,9 @@ FROM rust:1.66.1 as build
 
 WORKDIR /usr/src/L0C0B0T
 
+# Install aditional build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends cmake
+
 # Add source code
 COPY ["Cargo.toml", "Cargo.lock", "./"] 
 ADD src/ src/
