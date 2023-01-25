@@ -53,8 +53,8 @@ async fn get_custom_metadata(ctx: &Context, track: &TrackHandle) -> (User, Strin
     let (requester_id, channel_id) = {
         let typemap = track.typemap().read().await;
 
-        let requester_id = typemap.get::<TrackRequester>().unwrap().clone();
-        let channel_id = typemap.get::<TrackChannel>().unwrap().clone();
+        let requester_id = *typemap.get::<TrackRequester>().unwrap();
+        let channel_id = *typemap.get::<TrackChannel>().unwrap();
 
         (requester_id, channel_id)
     };
@@ -82,7 +82,7 @@ fn playing_bar(length: usize, ratio: f32) -> String {
     let after = length - before - 1;
 
     bar.push_str("▬".repeat(before).as_str());
-    bar.push_str("🔘");
+    bar.push('🔘');
     bar.push_str("▬".repeat(after).as_str());
 
     bar
@@ -97,7 +97,7 @@ pub(super) fn searching_response(query: &str) -> String {
 
 pub(super) async fn song_added_embed(
     ctx: &Context,
-    queue: &Vec<TrackHandle>,
+    queue: &[TrackHandle],
     index: usize,
 ) -> CreateEmbed {
     let added_track = queue.get(index).unwrap();
