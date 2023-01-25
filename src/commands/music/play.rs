@@ -1,50 +1,21 @@
 // Playback control
 
-use std::sync::Arc;
-
 use serenity::{
     framework::standard::{macros::command, Args, CommandResult},
     model::channel::Message,
-    prelude::{Context, Mutex},
+    prelude::Context,
 };
-use songbird::Call;
 
 use super::{
-    channels::{get_guild_channel, join_channel},
-    queue::{insert_song, QueuePosition},
+    errors::MusicCommandError,
+    responses::{
+        searching_response, song_added_embed, song_seeked_response, song_skipped_response,
+    },
+    utils::{
+        get_guild_channel, insert_song, join_channel, parse_duration, pause_song, resume_song,
+        search_song, QueuePosition,
+    },
 };
-
-pub(super) async fn pause_song(handler_lock: Arc<Mutex<Call>>) -> Result<(), &'static str> {
-    let handler = handler_lock.lock().await;
-
-    let queue = handler.queue();
-
-    if queue.current().is_none() {
-        return Err("No song playing");
-    }
-
-    handler.queue().pause().map_err(|_| "Failed to pause")?;
-
-    Ok(())
-}
-
-pub(super) async fn resume_song(handler_lock: Arc<Mutex<Call>>) -> Result<(), &'static str> {
-    let handler = handler_lock.lock().await;
-
-    let queue = handler.queue();
-
-    if queue.current().is_none() {
-        return Err("No song playing");
-    }
-
-    handler.queue().resume().map_err(|_| "Failed to resume")?;
-
-    Ok(())
-}
-
-/////////////////////////
-//      Commands       //
-/////////////////////////
 
 #[command]
 #[only_in(guilds)]
@@ -56,13 +27,30 @@ pub async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
     if !query.is_empty() {
         // If there is a query, search for a video and play it
-        let source = songbird::input::ytdl_search(&query)
-            .await
-            .map_err(|_| "Failed to find video")?;
+        msg.reply(ctx, searching_response(query)).await?;
+        let source = search_song(query).await?;
 
         let handler_lock = join_channel(ctx, guild, channel).await?;
 
-        insert_song(handler_lock, source, QueuePosition::Last).await?;
+        let position = insert_song(
+            msg.author.id,
+            channel,
+            handler_lock.clone(),
+            source.into(),
+            QueuePosition::Last,
+        )
+        .await?;
+
+        let embed = {
+            let handler = handler_lock.lock().await;
+            let queue = handler.queue().current_queue();
+
+            song_added_embed(ctx, &queue, position).await
+        };
+
+        msg.channel_id
+            .send_message(&ctx.http, |m| m.set_embed(embed))
+            .await?;
 
         Ok(())
     } else {
@@ -83,30 +71,45 @@ pub async fn play_top(ctx: &Context, msg: &Message, args: Args) -> CommandResult
 
     let query = args.rest();
 
-    if !query.is_empty() {
-        let source = songbird::input::ytdl_search(&query)
-            .await
-            .map_err(|_| "Failed to find video")?;
+    msg.reply(ctx, searching_response(query)).await?;
+    let source = search_song(query).await?;
 
-        let handler_lock = join_channel(ctx, guild, channel).await?;
+    let handler_lock = join_channel(ctx, guild, channel).await?;
 
-        let song_playing = {
-            let handler = handler_lock.lock().await;
-            handler.queue().current().is_some()
-        };
+    let song_playing = {
+        let handler = handler_lock.lock().await;
+        handler.queue().current().is_some()
+    };
 
-        if song_playing {
-            // If there is a song playing, insert the new song at index 1
-            insert_song(handler_lock, source, QueuePosition::Index(1)).await?;
-        } else {
-            // If there is no song playing, copy the behavior of play
-            insert_song(handler_lock, source, QueuePosition::Last).await?;
-        }
-
-        Ok(())
+    let position = if song_playing {
+        // If there is a song playing, insert the new song at index 1
+        QueuePosition::Index(1)
     } else {
-        Err("No query provided".into())
-    }
+        // If there is no song playing, copy the behavior of play
+        QueuePosition::Last
+    };
+
+    let position = insert_song(
+        msg.author.id,
+        channel,
+        handler_lock.clone(),
+        source.into(),
+        position,
+    )
+    .await?;
+
+    let embed = {
+        let handler = handler_lock.lock().await;
+        let queue = handler.queue().current_queue();
+
+        song_added_embed(ctx, &queue, position).await
+    };
+
+    msg.channel_id
+        .send_message(&ctx.http, |m| m.set_embed(embed))
+        .await?;
+
+    Ok(())
 }
 
 #[command]
@@ -122,11 +125,13 @@ pub async fn skip(ctx: &Context, msg: &Message) -> CommandResult {
 
     let queue = handler.queue();
 
-    if queue.current().is_none() {
-        return Err("No song playing".into());
-    }
+    let track = queue.current().ok_or(MusicCommandError::NoSongPlaying)?;
 
     queue.skip().unwrap();
+
+    msg.channel_id
+        .say(&ctx.http, song_skipped_response(&track))
+        .await?;
 
     Ok(())
 }
@@ -140,7 +145,11 @@ pub async fn pause(ctx: &Context, msg: &Message) -> CommandResult {
 
     let handler_lock = manager.get(guild.id).unwrap();
 
-    pause_song(handler_lock).await.map_err(|e| e.into())
+    pause_song(handler_lock).await?;
+
+    msg.channel_id.say(&ctx.http, "⏸️ **Pausando...**").await?;
+
+    Ok(())
 }
 
 #[command]
@@ -152,7 +161,11 @@ pub async fn resume(ctx: &Context, msg: &Message) -> CommandResult {
 
     let handler_lock = manager.get(guild.id).unwrap();
 
-    resume_song(handler_lock).await.map_err(|e| e.into())
+    resume_song(handler_lock).await?;
+
+    msg.channel_id.say(&ctx.http, "▶️ **Reanudando...**").await?;
+
+    Ok(())
 }
 
 #[command]
@@ -163,6 +176,41 @@ pub async fn stop(ctx: &Context, msg: &Message) -> CommandResult {
     let manager = songbird::get(ctx).await.unwrap().clone();
 
     manager.remove(guild.id).await.unwrap();
+
+    Ok(())
+}
+
+#[command]
+#[only_in(guilds)]
+pub async fn seek(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let guild = msg.guild(&ctx.cache).unwrap();
+
+    let manager = songbird::get(ctx).await.unwrap().clone();
+
+    let handler_lock = manager.get(guild.id).unwrap();
+    let handler = handler_lock.lock().await;
+
+    let queue = handler.queue();
+
+    let track = queue.current().ok_or(MusicCommandError::NoSongPlaying)?;
+
+    let arg = args.rest();
+
+    let position = parse_duration(arg).ok_or(MusicCommandError::InvalidTime)?;
+
+    let duration = track.metadata().duration.unwrap();
+
+    if position > duration {
+        return Err(MusicCommandError::InvalidTime.into());
+    }
+
+    track
+        .seek_time(position)
+        .map_err(|_| MusicCommandError::SeekFailed)?;
+
+    msg.channel_id
+        .say(&ctx.http, song_seeked_response(position))
+        .await?;
 
     Ok(())
 }

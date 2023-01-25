@@ -3,15 +3,25 @@ FROM rust:1.66.1 as build
 
 WORKDIR /usr/src/L0C0B0T
 
+# Install aditional build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends cmake
+
 # Add source code
 COPY ["Cargo.toml", "Cargo.lock", "./"] 
 ADD src/ src/
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake
 
 # Compile and install
 RUN cargo install --path .
 
 ### Stage 2: Run ###
 FROM debian:stable-slim
+
+ARG EXT_DISCORD_TOKEN
+ENV DISCORD_TOKEN=$EXT_DISCORD_TOKEN
 
 # Install aditional runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \

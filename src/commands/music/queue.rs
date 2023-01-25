@@ -1,61 +1,16 @@
 // Queue functionality
 
-use std::sync::Arc;
-
 use serenity::{
     framework::standard::{macros::command, Args, CommandResult},
     model::channel::Message,
-    prelude::{Context, Mutex},
+    prelude::Context,
 };
-use songbird::{input::Input, Call};
 
-#[derive(Debug, Clone, Copy)]
-pub(super) enum QueuePosition {
-    Last,
-    Index(usize),
-}
-
-/// Add a song to the queue in a given position
-///
-/// ## Arguments
-///
-/// * `handler_lock` - A lock to the songbird handler
-/// * `source` - The song to add to the queue
-/// * `position` - The position to add the song to
-///
-/// ## Returns
-///
-/// * `Ok(())` - The song was added to the queue
-/// * `Err(&str)` - The song was not added to the queue
-pub(super) async fn insert_song(
-    handler_lock: Arc<Mutex<Call>>,
-    source: Input,
-    position: QueuePosition,
-) -> Result<(), &'static str> {
-    let mut handler = handler_lock.lock().await;
-
-    // Add the song to the queue
-    handler.enqueue_source(source);
-
-    // Modify the queue if necessary
-    match position {
-        QueuePosition::Last => Ok(()),
-        QueuePosition::Index(index) => {
-            let queue = handler.queue();
-
-            if index >= queue.len() || index == 0 {
-                return Err("Index out of bounds");
-            }
-
-            queue.modify_queue(move |q| {
-                let song = q.remove(q.len() - 1).unwrap();
-                q.insert(index, song);
-            });
-
-            Ok(())
-        }
-    }
-}
+use super::{
+    errors::MusicCommandError,
+    responses::{now_playing_embed, queue_embed, searching_response, song_added_embed},
+    utils::{insert_song, search_song, QueuePosition},
+};
 
 /////////////////////////
 //      Commands       //
@@ -72,27 +27,17 @@ pub async fn queue(ctx: &Context, msg: &Message) -> CommandResult {
     let handler_lock = manager.get(guild.id).unwrap();
     let handler = handler_lock.lock().await;
 
-    let queue = handler.queue().current_queue();
+    let queue = handler.queue();
 
-    if queue.is_empty() {
-        return Err("Queue is empty".into());
+    if queue.current().is_none() {
+        return Err(MusicCommandError::NoSongPlaying.into());
     }
 
-    let mut message: String = "Queue:\n".into();
+    let embed = queue_embed(ctx, &queue.current_queue()).await;
 
-    message += &queue
-        .iter()
-        .enumerate()
-        .map(|(i, track)| {
-            let metadata = track.metadata();
-            let title = metadata.title.as_ref().unwrap();
-
-            format!("{i}. {title}")
-        })
-        .collect::<Vec<String>>()
-        .join("\n");
-
-    msg.channel_id.say(&ctx.http, message).await?;
+    msg.channel_id
+        .send_message(&ctx, |m| m.set_embed(embed))
+        .await?;
 
     Ok(())
 }
@@ -108,21 +53,18 @@ pub async fn now_playing(ctx: &Context, msg: &Message) -> CommandResult {
     let handler_lock = manager.get(guild.id).unwrap();
     let handler = handler_lock.lock().await;
 
-    let current_track = handler.queue().current();
+    let track = handler
+        .queue()
+        .current()
+        .ok_or(MusicCommandError::NoSongPlaying)?;
 
-    match current_track {
-        Some(track) => {
-            let metadata = track.metadata();
-            let title = metadata.title.as_ref().unwrap();
+    let embed = now_playing_embed(ctx, &track).await;
 
-            msg.channel_id
-                .say(&ctx.http, format!("Now playing: {}", title))
-                .await?;
+    msg.channel_id
+        .send_message(&ctx.http, |m| m.set_embed(embed))
+        .await?;
 
-            Ok(())
-        }
-        None => Err("No song playing".into()),
-    }
+    Ok(())
 }
 
 #[command]
@@ -138,9 +80,8 @@ pub async fn insert(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
 
     let handler_lock = manager.get(guild.id).unwrap();
 
-    let source = songbird::input::ytdl_search(&query)
-        .await
-        .map_err(|_| "Failed to find video")?;
+    msg.reply(ctx, searching_response(query)).await?;
+    let source = search_song(query).await?;
 
     let queue_length = {
         let handler = handler_lock.lock().await;
@@ -148,10 +89,28 @@ pub async fn insert(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
     };
 
     if index > queue_length || index == 0 {
-        return Err("Index out of bounds".into());
+        return Err(MusicCommandError::InvalidQueueIndex.into());
     }
 
-    insert_song(handler_lock, source, QueuePosition::Index(index)).await?;
+    let position = insert_song(
+        msg.author.id,
+        msg.channel_id,
+        handler_lock.clone(),
+        source.into(),
+        QueuePosition::Index(index),
+    )
+    .await?;
+
+    let embed = {
+        let handler = handler_lock.lock().await;
+        let queue = handler.queue().current_queue();
+
+        song_added_embed(ctx, &queue, position).await
+    };
+
+    msg.channel_id
+        .send_message(&ctx.http, |m| m.set_embed(embed))
+        .await?;
 
     Ok(())
 }
@@ -160,7 +119,7 @@ pub async fn insert(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
 #[only_in(guilds)]
 #[aliases("rm")]
 pub async fn remove(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let index = args.parse::<usize>().map_err(|_| "Invalid index")?;
+    let index = args.parse::<usize>().map_err(|_| "Índice inválido")?;
 
     let guild = msg.guild(&ctx.cache).unwrap();
 
@@ -172,12 +131,64 @@ pub async fn remove(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let queue = handler.queue();
 
     if index >= queue.len() || index == 0 {
-        return Err("Index out of bounds".into());
+        return Err(MusicCommandError::InvalidQueueIndex.into());
     }
 
+    let mut removed_title: String = String::new();
+
     handler.queue().modify_queue(|q| {
-        q.remove(index);
+        removed_title = q.remove(index).unwrap().metadata().title.clone().unwrap();
     });
+
+    msg.channel_id
+        .say(
+            &ctx.http,
+            format!("🗑️ **{removed_title}** fue eliminada de la cola"),
+        )
+        .await?;
+
+    Ok(())
+}
+
+#[command]
+#[only_in(guilds)]
+#[aliases("move", "mv")]
+pub async fn move_(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let from = args.single::<usize>()?;
+    let to = args.single::<usize>()?;
+
+    let guild = msg.guild(&ctx.cache).unwrap();
+
+    let manager = songbird::get(ctx).await.unwrap().clone();
+
+    let handler_lock = manager.get(guild.id).unwrap();
+    let handler = handler_lock.lock().await;
+
+    let queue = handler.queue();
+
+    if from >= queue.len() || from == 0 {
+        return Err(MusicCommandError::InvalidQueueIndex.into());
+    }
+
+    if to >= queue.len() || to == 0 {
+        return Err(MusicCommandError::InvalidQueueIndex.into());
+    }
+
+    let mut moved_title: String = String::new();
+
+    handler.queue().modify_queue(|q| {
+        let track = q.remove(from).unwrap();
+        moved_title = track.metadata().title.clone().unwrap();
+
+        q.insert(to, track);
+    });
+
+    msg.channel_id
+        .say(
+            &ctx.http,
+            format!("🚚 **{moved_title}** fue movida a la posición {to}"),
+        )
+        .await?;
 
     Ok(())
 }
@@ -195,11 +206,15 @@ pub async fn clear(ctx: &Context, msg: &Message) -> CommandResult {
     let queue = handler.queue();
 
     if queue.len() <= 1 {
-        Err("Queue is empty".into())
+        Err(MusicCommandError::EmptyQueue.into())
     } else {
         handler.queue().modify_queue(|q| {
             q.drain(1..);
         });
+
+        msg.channel_id
+            .say(&ctx.http, "💥 **Limpiando la cola**")
+            .await?;
 
         Ok(())
     }
