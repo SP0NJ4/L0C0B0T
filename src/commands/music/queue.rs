@@ -9,7 +9,7 @@ use serenity::{
 use super::{
     errors::MusicCommandError,
     responses::{now_playing_embed, queue_embed, searching_response, song_added_embed},
-    utils::{insert_song, search_song, QueuePosition},
+    utils::{get_handler_lock, insert_song, search_song, QueuePosition},
 };
 
 /////////////////////////
@@ -20,11 +20,7 @@ use super::{
 #[only_in(guilds)]
 #[aliases("q")]
 pub async fn queue(ctx: &Context, msg: &Message) -> CommandResult {
-    let guild = msg.guild(&ctx.cache).unwrap();
-
-    let manager = songbird::get(ctx).await.unwrap().clone();
-
-    let handler_lock = manager.get(guild.id).unwrap();
+    let handler_lock = get_handler_lock(ctx, msg, false).await?;
     let handler = handler_lock.lock().await;
 
     let queue = handler.queue();
@@ -46,11 +42,7 @@ pub async fn queue(ctx: &Context, msg: &Message) -> CommandResult {
 #[only_in(guilds)]
 #[aliases("nepe", "np")]
 pub async fn now_playing(ctx: &Context, msg: &Message) -> CommandResult {
-    let guild = msg.guild(&ctx.cache).unwrap();
-
-    let manager = songbird::get(ctx).await.unwrap().clone();
-
-    let handler_lock = manager.get(guild.id).unwrap();
+    let handler_lock = get_handler_lock(ctx, msg, false).await?;
     let handler = handler_lock.lock().await;
 
     let track = handler
@@ -71,14 +63,10 @@ pub async fn now_playing(ctx: &Context, msg: &Message) -> CommandResult {
 #[only_in(guilds)]
 #[aliases("i")]
 pub async fn insert(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let handler_lock = get_handler_lock(ctx, msg, true).await?;
+
     let index = args.single::<usize>()?;
     let query = args.rest();
-
-    let guild = msg.guild(&ctx.cache).unwrap();
-
-    let manager = songbird::get(ctx).await.unwrap().clone();
-
-    let handler_lock = manager.get(guild.id).unwrap();
 
     msg.reply(ctx, searching_response(query)).await?;
     let source = search_song(query).await?;
@@ -94,7 +82,6 @@ pub async fn insert(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
 
     let position = insert_song(
         msg.author.id,
-        msg.channel_id,
         handler_lock.clone(),
         source.into(),
         QueuePosition::Index(index),
@@ -121,11 +108,7 @@ pub async fn insert(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
 pub async fn remove(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let index = args.parse::<usize>().map_err(|_| "Índice inválido")?;
 
-    let guild = msg.guild(&ctx.cache).unwrap();
-
-    let manager = songbird::get(ctx).await.unwrap().clone();
-
-    let handler_lock = manager.get(guild.id).unwrap();
+    let handler_lock = get_handler_lock(ctx, msg, false).await?;
     let handler = handler_lock.lock().await;
 
     let queue = handler.queue();
@@ -154,14 +137,14 @@ pub async fn remove(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[only_in(guilds)]
 #[aliases("move", "mv")]
 pub async fn move_(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let from = args.single::<usize>()?;
-    let to = args.single::<usize>()?;
+    let from = args
+        .single::<usize>()
+        .map_err(|_| MusicCommandError::InvalidQueueIndex)?;
+    let to = args
+        .single::<usize>()
+        .map_err(|_| MusicCommandError::InvalidQueueIndex)?;
 
-    let guild = msg.guild(&ctx.cache).unwrap();
-
-    let manager = songbird::get(ctx).await.unwrap().clone();
-
-    let handler_lock = manager.get(guild.id).unwrap();
+    let handler_lock = get_handler_lock(ctx, msg, false).await?;
     let handler = handler_lock.lock().await;
 
     let queue = handler.queue();
@@ -196,11 +179,7 @@ pub async fn move_(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
 #[command]
 #[only_in(guilds)]
 pub async fn clear(ctx: &Context, msg: &Message) -> CommandResult {
-    let guild = msg.guild(&ctx.cache).unwrap();
-
-    let manager = songbird::get(ctx).await.unwrap().clone();
-
-    let handler_lock = manager.get(guild.id).unwrap();
+    let handler_lock = get_handler_lock(ctx, msg, false).await?;
     let handler = handler_lock.lock().await;
 
     let queue = handler.queue();

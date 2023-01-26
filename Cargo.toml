@@ -12,3 +12,4 @@ serenity = "0.11.5"
 itertools = "0.10.5"
 songbird = { version = "0.3.0", features = ["builtin-queue", "yt-dlp"] }
 regex = "1.7.1"
+lazy_static = "1.4.0"

@@ -1,72 +1,141 @@
 // Shared utility functions for the music commands
 
-use std::{sync::Arc, time::Duration};
+use std::{
+    env,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
 
+use lazy_static::lazy_static;
 use regex::Regex;
 use serenity::{
+    async_trait,
     model::{
         channel::Message,
-        prelude::{ChannelId, GuildId, UserId},
+        prelude::{ChannelId, UserId},
     },
     prelude::{Context, Mutex, TypeMapKey},
 };
 use songbird::{
+    id::GuildId,
     input::{Input, Restartable},
-    Call,
+    tracks::PlayMode,
+    Call, Event, EventContext, EventHandler, Songbird,
 };
 
 use super::errors::MusicCommandError;
 
-/// Get the guild and channel the user is in
+lazy_static! {
+    /// The time in seconds between each check for idle voice
+    /// channels
+    static ref IDLE_CHECK_PERIOD: u64 = env::var("IDLE_CHECK_PERIOD")
+        .unwrap_or_else(|_| "10".to_string())
+        .parse()
+        .unwrap();
+
+    /// The maximum time in seconds a voice channel can be idle
+    /// before being disconnected
+    static ref IDLE_MAX_TIME: u64 = env::var("IDLE_TIME")
+        .unwrap_or_else(|_| "180".to_string())
+        .parse()
+        .unwrap();
+    static ref IDLE_MAX_COUNTS: u64 = *IDLE_MAX_TIME / *IDLE_CHECK_PERIOD;
+}
+
+struct IdleHandler {
+    manager: Arc<Songbird>,
+    guild_id: GuildId,
+    count: Arc<AtomicU64>,
+}
+
+#[async_trait]
+impl EventHandler for IdleHandler {
+    async fn act(&self, ctx: &EventContext<'_>) -> Option<Event> {
+        let EventContext::Track(track_list) = ctx else {
+            return None;
+        };
+
+        let is_playing = track_list
+            .iter()
+            .any(|(state, _)| matches!(state.playing, PlayMode::Play));
+
+        if is_playing {
+            self.count.store(0, Ordering::Relaxed);
+        } else {
+            let count = self.count.fetch_add(1, Ordering::Relaxed);
+
+            if count >= *IDLE_MAX_COUNTS {
+                self.manager.remove(self.guild_id).await.ok()?;
+            }
+        }
+
+        None
+    }
+}
+
+/// Return a lock to the songbird handler, optionally joining the channel
+/// if the bot is not in it
 ///
 /// ## Arguments
 ///
 /// * `ctx` - The context of the message
 /// * `msg` - The message to get the guild and channel from
-///
-/// ## Returns
-///
-/// * `Ok((GuildId, ChannelId))` - The guild and channel the user is in
-/// * `Err(&str)` - The user is not in a voice channel
-pub(super) async fn get_guild_channel(
-    ctx: &Context,
-    msg: &Message,
-) -> Result<(GuildId, ChannelId), &'static str> {
-    let guild = msg.guild(&ctx.cache).unwrap();
-
-    let channel = guild
-        .voice_states
-        .get(&msg.author.id)
-        .and_then(|vs| vs.channel_id)
-        .ok_or(MusicCommandError::NoVoiceChannel)?;
-
-    Ok((guild.id, channel))
-}
-
-/// Join a voice channel
-///
-/// ## Arguments
-///
-/// * `ctx` - The context of the message
-/// * `guild_id` - The guild containing the channel to join
-/// * `channel_id` - The channel to join
+/// * `join_if_not_in_channel` - Whether to join the channel if the bot is not in it
 ///
 /// ## Returns
 ///
 /// * `Ok(Arc<Mutex<Call>>)` - The lock to the songbird handler
 /// * `Err(&str)` - The bot failed to join the voice channel
-pub(super) async fn join_channel(
+pub(super) async fn get_handler_lock(
     ctx: &Context,
-    guild_id: GuildId,
-    channel_id: ChannelId,
+    msg: &Message,
+    join_if_not_in_channel: bool,
 ) -> Result<Arc<Mutex<Call>>, MusicCommandError> {
     let manager = songbird::get(ctx).await.unwrap().clone();
 
-    let (handler_lock, success) = manager.join(guild_id, channel_id).await;
+    let guild = msg.guild(&ctx.cache).unwrap();
 
-    success
-        .map(|_| handler_lock)
-        .map_err(|_| MusicCommandError::FailedToJoinChannel)
+    let handler_lock = manager.get(guild.id);
+
+    let handler_lock = if let Some(handler_lock) = handler_lock {
+        handler_lock
+    } else if !join_if_not_in_channel {
+        return Err(MusicCommandError::NotInVoiceChannel);
+    } else {
+        let channel_id = guild
+            .voice_states
+            .get(&msg.author.id)
+            .and_then(|vs| vs.channel_id)
+            .ok_or(MusicCommandError::NoVoiceChannel)?;
+
+        let (handler_lock, success) = manager.join(guild.id, channel_id).await;
+
+        if success.is_err() {
+            return Err(MusicCommandError::FailedToJoinChannel);
+        }
+
+        {
+            let mut handler = handler_lock.lock().await;
+
+            handler.remove_all_global_events();
+
+            handler.add_global_event(
+                Event::Periodic(Duration::from_secs(*IDLE_CHECK_PERIOD), None),
+                IdleHandler {
+                    manager: manager.clone(),
+                    guild_id: guild.id.into(),
+                    count: Arc::new(AtomicU64::new(0)),
+                },
+            );
+        }
+
+        handler_lock
+    };
+
+    Ok(handler_lock)
 }
 
 /// Pauses the current song
@@ -123,7 +192,34 @@ pub(super) async fn resume_song(handler_lock: Arc<Mutex<Call>>) -> Result<(), Mu
     Ok(())
 }
 
-const DURATION_PATTERN: &str = r"^(?:(?:([01]?\d|2[0-3]):)?([0-5]?\d):)?([0-5]?\d)$";
+/// Stops the player
+///
+/// ## Arguments
+///
+/// * `handler_lock` - The lock to the songbird handler
+///
+/// ## Returns
+///
+/// * `Ok(())` - The player was stopped
+/// * `Err(&str)` - No song was playing
+pub(super) async fn stop_player(handler_lock: Arc<Mutex<Call>>) -> Result<(), MusicCommandError> {
+    let handler = handler_lock.lock().await;
+
+    let queue = handler.queue();
+
+    if queue.current().is_none() {
+        return Err(MusicCommandError::NoSongPlaying);
+    }
+
+    handler.queue().stop();
+
+    Ok(())
+}
+
+lazy_static! {
+    static ref DURATION_REGEX: Regex =
+        Regex::new(r"^(?:(?:([01]?\d|2[0-3]):)?([0-5]?\d):)?([0-5]?\d)$").unwrap();
+}
 
 /// Parses a string in the format `hh:mm:ss` or `sss` to a `Duration`
 ///
@@ -142,7 +238,7 @@ pub(super) fn parse_duration(input: &str) -> Option<Duration> {
     }
 
     // Otherwise, it's a duration in the format `hh:mm:ss`
-    let captures = Regex::new(DURATION_PATTERN).unwrap().captures(input)?;
+    let captures = DURATION_REGEX.captures(input)?;
 
     let mut result = Duration::new(0, 0);
 
@@ -196,7 +292,6 @@ impl TypeMapKey for TrackChannel {
 /// * `Err(&str)` - The song was not added to the queue
 pub(super) async fn insert_song(
     requester: UserId,
-    channel: ChannelId,
     handler_lock: Arc<Mutex<Call>>,
     source: Input,
     position: QueuePosition,
@@ -211,7 +306,7 @@ pub(super) async fn insert_song(
         let mut typemap = handle.typemap().write().await;
 
         typemap.insert::<TrackRequester>(requester);
-        typemap.insert::<TrackChannel>(channel);
+        typemap.insert::<TrackChannel>(ChannelId(handler.current_channel().unwrap().0));
     }
 
     // Modify the queue if necessary
