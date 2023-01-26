@@ -2,14 +2,11 @@
 
 use serenity::{
     framework::standard::{macros::command, CommandResult},
-    model::channel::Message,
+    model::{channel::Message, prelude::ChannelId},
     prelude::{Context, Mentionable},
 };
 
-use super::{
-    errors::MusicCommandError,
-    utils::{get_guild_channel, join_channel},
-};
+use super::{errors::MusicCommandError, utils::get_handler_lock};
 
 /////////////////////////
 //      Commands       //
@@ -18,11 +15,12 @@ use super::{
 #[command]
 #[only_in(guilds)]
 pub async fn join(ctx: &Context, msg: &Message) -> CommandResult {
-    let (guild, channel) = get_guild_channel(ctx, msg).await?;
+    let handler_lock = get_handler_lock(ctx, msg, true).await?;
 
-    join_channel(ctx, guild, channel).await.map(|_| ())?;
+    let handler = handler_lock.lock().await;
 
-    let channel_mention = channel.mention();
+    let channel = handler.current_channel().unwrap();
+    let channel_mention = ChannelId(channel.0).mention();
 
     msg.channel_id
         .say(
@@ -38,14 +36,14 @@ pub async fn join(ctx: &Context, msg: &Message) -> CommandResult {
 #[only_in(guilds)]
 #[aliases("dc", "disconnect", "disc")]
 pub async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
-    let guild = msg.guild(&ctx.cache).unwrap();
+    let handler_lock = get_handler_lock(ctx, msg, false).await?;
 
-    let manager = songbird::get(ctx).await.unwrap().clone();
+    let mut handler = handler_lock.lock().await;
 
-    manager
-        .remove(guild.id)
+    handler
+        .leave()
         .await
-        .map_err(|_| MusicCommandError::NotInVoiceChannel)?;
+        .map_err(|_| MusicCommandError::Other("No pude salir del canal"))?;
 
     msg.channel_id.say(&ctx.http, "Chau 😔").await?;
 
