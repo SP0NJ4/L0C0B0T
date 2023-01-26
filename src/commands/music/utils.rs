@@ -1,10 +1,18 @@
 // Shared utility functions for the music commands
 
-use std::{sync::Arc, time::Duration};
+use std::{
+    env,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
 
 use lazy_static::lazy_static;
 use regex::Regex;
 use serenity::{
+    async_trait,
     model::{
         channel::Message,
         prelude::{ChannelId, UserId},
@@ -12,11 +20,61 @@ use serenity::{
     prelude::{Context, Mutex, TypeMapKey},
 };
 use songbird::{
+    id::GuildId,
     input::{Input, Restartable},
-    Call,
+    tracks::PlayMode,
+    Call, Event, EventContext, EventHandler, Songbird,
 };
 
 use super::errors::MusicCommandError;
+
+lazy_static! {
+    /// The time in seconds between each check for idle voice
+    /// channels
+    static ref IDLE_CHECK_PERIOD: u64 = env::var("IDLE_CHECK_PERIOD")
+        .unwrap_or_else(|_| "10".to_string())
+        .parse()
+        .unwrap();
+
+    /// The maximum time in seconds a voice channel can be idle
+    /// before being disconnected
+    static ref IDLE_MAX_TIME: u64 = env::var("IDLE_TIME")
+        .unwrap_or_else(|_| "180".to_string())
+        .parse()
+        .unwrap();
+    static ref IDLE_MAX_COUNTS: u64 = *IDLE_MAX_TIME / *IDLE_CHECK_PERIOD;
+}
+
+struct IdleHandler {
+    manager: Arc<Songbird>,
+    guild_id: GuildId,
+    count: Arc<AtomicU64>,
+}
+
+#[async_trait]
+impl EventHandler for IdleHandler {
+    async fn act(&self, ctx: &EventContext<'_>) -> Option<Event> {
+        let EventContext::Track(track_list) = ctx else {
+            return None;
+        };
+
+        let is_playing = track_list
+            .iter()
+            .any(|(state, _)| matches!(state.playing, PlayMode::Play));
+
+        if is_playing {
+            self.count.store(0, Ordering::Relaxed);
+        } else {
+            let count = self.count.fetch_add(1, Ordering::Relaxed);
+
+            if count >= *IDLE_MAX_COUNTS {
+                self.manager.remove(self.guild_id).await.ok()?;
+            }
+        }
+
+        None
+    }
+}
 
 /// Return a lock to the songbird handler, optionally joining the channel
 /// if the bot is not in it
@@ -55,10 +113,26 @@ pub(super) async fn get_handler_lock(
 
         let (handler_lock, success) = manager.join(guild.id, channel_id).await;
 
-        success
-            .ok()
-            .map(|_| handler_lock)
-            .ok_or(MusicCommandError::FailedToJoinChannel)?
+        if success.is_err() {
+            return Err(MusicCommandError::FailedToJoinChannel);
+        }
+
+        {
+            let mut handler = handler_lock.lock().await;
+
+            handler.remove_all_global_events();
+
+            handler.add_global_event(
+                Event::Periodic(Duration::from_secs(*IDLE_CHECK_PERIOD), None),
+                IdleHandler {
+                    manager: manager.clone(),
+                    guild_id: guild.id.into(),
+                    count: Arc::new(AtomicU64::new(0)),
+                },
+            );
+        }
+
+        handler_lock
     };
 
     Ok(handler_lock)
