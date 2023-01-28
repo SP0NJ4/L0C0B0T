@@ -24,7 +24,7 @@ async fn before(
     _msg: &serenity::model::channel::Message,
     cmd_name: &str,
 ) -> bool {
-    println!("Running {} command", cmd_name);
+    println!("Running {cmd_name} command");
     true
 }
 
@@ -35,10 +35,10 @@ async fn after(
     cmd_name: &str,
     cmd_result: Result<(), CommandError>,
 ) {
-    println!("Finished running {} command", cmd_name);
+    println!("Finished running {cmd_name} command");
 
     if let Err(why) = cmd_result {
-        println!("Error running command: {:?}", why);
+        println!("Error running command: {why:?}");
 
         handle_error(_ctx, _msg, why.to_string()).await;
     }
