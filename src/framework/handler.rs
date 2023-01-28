@@ -13,17 +13,20 @@ impl L0C0B0THandler {
         Self { commands: vec![] }
     }
 
-    pub fn command(&mut self, group: impl Command) {
+    pub fn command(mut self, group: impl Command) -> Self {
         self.commands.push(Box::new(group));
+        self
     }
 
     pub async fn dispatch(&self, ctx: &Context, msg: &Message) {
-        for group in &self.commands {
-            match group.dispatch(&ctx, &msg).await {
-                DispatchResult::Handled => return,
+        for command in &self.commands {
+            match command.dispatch(ctx, msg).await {
+                DispatchResult::Handled => {
+                    println!("Ran {} command", command.name());
+                }
                 DispatchResult::Ignored => continue,
                 DispatchResult::Error(error_msg) => {
-                    handle_error(&ctx, &msg, error_msg).await;
+                    handle_error(ctx, msg, error_msg).await;
                     return;
                 }
             }

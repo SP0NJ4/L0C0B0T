@@ -8,6 +8,7 @@ use serenity::{
     prelude::Context,
 };
 
+use crate::commands::sube_baja::SUBE_BAJA_COMMAND;
 use crate::commands::{music::MUSIC_GROUP, testing::TESTING_GROUP};
 
 pub mod command;
@@ -15,6 +16,7 @@ pub mod handler;
 pub mod utils;
 
 use self::handler::L0C0B0THandler;
+use self::utils::handle_error;
 
 #[hook]
 async fn before(
@@ -38,12 +40,7 @@ async fn after(
     if let Err(why) = cmd_result {
         println!("Error running command: {:?}", why);
 
-        if let Err(why) = _msg
-            .reply(&_ctx.http, format!("⚠️ **Error**: {}", why))
-            .await
-        {
-            println!("Error sending error message: {:?}", why);
-        }
+        handle_error(_ctx, _msg, why.to_string()).await;
     }
 }
 
@@ -53,7 +50,8 @@ async fn normal_message(ctx: &Context, msg: &Message) {
 }
 
 lazy_static! {
-    pub static ref L0C0B0T_HANDLER: L0C0B0THandler = L0C0B0THandler::new();
+    pub static ref L0C0B0T_HANDLER: L0C0B0THandler =
+        L0C0B0THandler::new().command(SUBE_BAJA_COMMAND);
 }
 
 pub fn create_framework() -> StandardFramework {

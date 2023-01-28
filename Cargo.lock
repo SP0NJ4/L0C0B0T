@@ -722,6 +722,7 @@ dependencies = [
  "dotenv",
  "itertools",
  "lazy_static",
+ "rand",
  "regex",
  "serenity",
  "songbird",

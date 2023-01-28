@@ -14,10 +14,13 @@ use serenity::{model::prelude::Message, prelude::Context};
 pub enum DispatchResult {
     Handled,
     Ignored,
+    #[allow(dead_code)]
     Error(String),
 }
 
 #[async_trait]
 pub trait Command: Sync + Send + 'static {
+    fn name(&self) -> &'static str;
+
     async fn dispatch(&self, ctx: &Context, msg: &Message) -> DispatchResult;
 }
