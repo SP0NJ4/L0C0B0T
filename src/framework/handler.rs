@@ -1,7 +1,6 @@
 use serenity::{client::Context, model::channel::Message};
 
-use super::command::{Command, DispatchResult};
-use super::utils::handle_error;
+use super::command::Command;
 
 /// Handler for commands that are not called by prefix.
 pub struct L0C0B0THandler {
@@ -18,17 +17,15 @@ impl L0C0B0THandler {
         self
     }
 
+    /// Dispatches a message to the commands.
+    ///
+    /// The message is dispatched to each command in order until one of them returns
+    /// `true`.
     pub async fn dispatch(&self, ctx: &Context, msg: &Message) {
         for command in &self.commands {
-            match command.dispatch(ctx, msg).await {
-                DispatchResult::Handled => {
-                    println!("Ran {} command", command.name());
-                }
-                DispatchResult::Ignored => continue,
-                DispatchResult::Error(error_msg) => {
-                    handle_error(ctx, msg, error_msg).await;
-                    return;
-                }
+            if command.dispatch(ctx, msg).await {
+                println!("Ran {} command", command.name());
+                return;
             }
         }
     }

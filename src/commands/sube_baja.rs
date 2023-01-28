@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use lazy_static::lazy_static;
 use serenity::{model::prelude::Message, prelude::Context};
 
-use crate::framework::command::{Command, DispatchResult};
+use crate::framework::command::Command;
 
 lazy_static! {
     pub static ref SUBE_ANSWERS: Vec<&'static str> = vec![
@@ -49,7 +49,7 @@ impl Command for SubeBajaCommand {
         "sube_baja"
     }
 
-    async fn dispatch(&self, ctx: &Context, msg: &Message) -> DispatchResult {
+    async fn dispatch(&self, ctx: &Context, msg: &Message) -> bool {
         let content = msg.content.to_lowercase();
 
         if content.contains("la sube") || content.contains("la baja") {
@@ -63,9 +63,9 @@ impl Command for SubeBajaCommand {
 
             msg.reply(ctx, answer).await.unwrap();
 
-            DispatchResult::Handled
+            true
         } else {
-            DispatchResult::Ignored
+            false
         }
     }
 }
