@@ -18,7 +18,7 @@ async fn main() {
 
     let mut client = L0C0B0TClient::new(&token)
         .await
-        .map_err(|e| format!("Error creating client: {}", e))
+        .map_err(|err| format!("Error creating client: {err}"))
         .unwrap();
 
     client.start().await.unwrap();

@@ -23,10 +23,7 @@ pub async fn join(ctx: &Context, msg: &Message) -> CommandResult {
     let channel_mention = ChannelId(channel.0).mention();
 
     msg.channel_id
-        .say(
-            &ctx.http,
-            format!("**Conectando a {}...**", channel_mention),
-        )
+        .say(&ctx.http, format!("**Conectando a {channel_mention}...**"))
         .await?;
 
     Ok(())
