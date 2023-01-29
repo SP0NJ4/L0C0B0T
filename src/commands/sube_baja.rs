@@ -1,6 +1,7 @@
-use async_trait::async_trait;
 use lazy_static::lazy_static;
 use serenity::{model::prelude::Message, prelude::Context};
+
+use l0c0b0t_macros::command;
 
 use crate::framework::command::Command;
 
@@ -41,33 +42,23 @@ lazy_static! {
     ];
 }
 
-pub struct SubeBajaCommand;
+#[command]
+async fn sube_baja(ctx: Context, msg: Message) -> bool {
+    let content = msg.content.to_lowercase();
 
-#[async_trait]
-impl Command for SubeBajaCommand {
-    fn name(&self) -> &'static str {
-        "sube_baja"
-    }
-
-    async fn dispatch(&self, ctx: &Context, msg: &Message) -> bool {
-        let content = msg.content.to_lowercase();
-
-        if content.contains("la sube") || content.contains("la baja") {
-            let array = if rand::random::<bool>() {
-                SUBE_ANSWERS.as_slice()
-            } else {
-                BAJA_ANSWERS.as_slice()
-            };
-
-            let answer = array[rand::random::<usize>() % array.len()];
-
-            msg.reply(ctx, answer).await.unwrap();
-
-            true
+    if content.contains("la sube") || content.contains("la baja") {
+        let array = if rand::random::<bool>() {
+            SUBE_ANSWERS.as_slice()
         } else {
-            false
-        }
+            BAJA_ANSWERS.as_slice()
+        };
+
+        let answer = array[rand::random::<usize>() % array.len()];
+
+        msg.reply(ctx, answer).await.unwrap();
+
+        true
+    } else {
+        false
     }
 }
-
-pub const SUBE_BAJA_COMMAND: SubeBajaCommand = SubeBajaCommand;

@@ -3,8 +3,6 @@ name = "l0c0b0t"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 dotenv = "0.15.0"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
@@ -15,3 +13,4 @@ regex = "1.7.1"
 lazy_static = "1.4.0"
 async-trait = "0.1.63"
 rand = "0.8.5"
+l0c0b0t_macros = { path = "./l0c0b0t_macros" }

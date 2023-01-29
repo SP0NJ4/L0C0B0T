@@ -1,5 +1,5 @@
 # Cargo generated files
-/target
+**/target
 
 # Environment variables
 *.env
