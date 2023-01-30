@@ -13,6 +13,7 @@ use crate::commands::{music::MUSIC_GROUP, testing::TESTING_GROUP};
 
 pub mod commands;
 pub mod handler;
+pub mod settings;
 pub mod utils;
 
 use self::handler::L0C0B0THandler;

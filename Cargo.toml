@@ -14,5 +14,6 @@ lazy_static = "1.4.0"
 async-trait = "0.1.63"
 rand = "0.8.5"
 l0c0b0t_macros = { path = "./l0c0b0t_macros" }
-serde = "1.0.152"
 thiserror = "1.0.38"
+typemap = "0.3.3"
+shlex = "1.1.0"
