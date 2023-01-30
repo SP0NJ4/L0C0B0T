@@ -734,8 +734,10 @@ dependencies = [
  "lazy_static",
  "rand",
  "regex",
+ "serde",
  "serenity",
  "songbird",
+ "thiserror",
  "tokio",
 ]
 

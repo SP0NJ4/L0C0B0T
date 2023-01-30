@@ -160,7 +160,7 @@ pub(super) async fn pause_song(handler_lock: Arc<Mutex<Call>>) -> Result<(), Mus
     handler
         .queue()
         .pause()
-        .map_err(|_| MusicCommandError::Other("Error al pausar"))?;
+        .map_err(|_| MusicCommandError::Generic)?;
 
     Ok(())
 }
@@ -187,7 +187,7 @@ pub(super) async fn resume_song(handler_lock: Arc<Mutex<Call>>) -> Result<(), Mu
     handler
         .queue()
         .resume()
-        .map_err(|_| MusicCommandError::Other("Error al reanudar"))?;
+        .map_err(|_| MusicCommandError::Generic)?;
 
     Ok(())
 }
