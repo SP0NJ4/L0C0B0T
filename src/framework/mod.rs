@@ -11,7 +11,7 @@ use serenity::{
 use crate::commands::sube_baja::SUBE_BAJA_COMMAND;
 use crate::commands::{music::MUSIC_GROUP, testing::TESTING_GROUP};
 
-pub mod command;
+pub mod commands;
 pub mod handler;
 pub mod utils;
 

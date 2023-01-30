@@ -1,9 +1,8 @@
 use lazy_static::lazy_static;
-use serenity::{model::prelude::Message, prelude::Context};
 
 use l0c0b0t_macros::command;
 
-use crate::framework::command::Command;
+use crate::framework::commands::Command;
 
 lazy_static! {
     pub static ref SUBE_ANSWERS: Vec<&'static str> = vec![
@@ -43,7 +42,7 @@ lazy_static! {
 }
 
 #[command]
-async fn sube_baja(ctx: Context, msg: Message) -> bool {
+async fn sube_baja(ctx: prelude::Context, msg: model::prelude::Message) -> bool {
     let content = msg.content.to_lowercase();
 
     if content.contains("la sube") || content.contains("la baja") {

@@ -1,6 +1,6 @@
 use serenity::{client::Context, model::channel::Message};
 
-use super::command::Command;
+use super::commands::Command;
 
 /// Handler for commands that are not called by prefix.
 pub struct L0C0B0THandler {
