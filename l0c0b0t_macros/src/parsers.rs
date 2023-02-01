@@ -2,7 +2,7 @@ use quote::ToTokens;
 use syn::{
     parse::{Parse, ParseStream},
     spanned::Spanned,
-    Attribute, FnArg, ItemFn,
+    Attribute, FnArg, Ident, ItemFn, Token, Type,
 };
 
 pub struct CommandFn {
@@ -14,6 +14,10 @@ impl Parse for CommandFn {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let attributes = input.call(Attribute::parse_outer)?;
         let fun = input.parse::<ItemFn>()?;
+
+        if !input.is_empty() {
+            return Err(syn::Error::new(input.span(), "Commands must be functions"));
+        }
 
         let signature = &fun.sig;
 
@@ -50,5 +54,20 @@ impl Parse for CommandFn {
         }
 
         Ok(CommandFn { attributes, fun })
+    }
+}
+
+pub struct Setting {
+    pub name: String,
+    pub ty: Type,
+}
+
+impl Parse for Setting {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let name = input.parse::<Ident>()?.to_string();
+        input.parse::<Token![:]>()?;
+        let type_ = input.parse::<Type>()?;
+
+        Ok(Setting { name, ty: type_ })
     }
 }

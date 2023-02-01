@@ -1,7 +1,7 @@
 use std::ops::Add;
 
 use convert_case::{Case, Casing};
-use parsers::CommandFn;
+use parsers::{CommandFn, Setting};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
@@ -72,6 +72,59 @@ pub fn command(attr: TokenStream, input: TokenStream) -> TokenStream {
 
             async fn dispatch(&self, ctx: &serenity::prelude::Context, msg: &serenity::model::prelude::Message) -> bool
                 #fun_body
+        }
+
+        pub const #instance_name: #struct_name = #struct_name;
+    };
+
+    output.into()
+}
+
+/// A function macro to define a setting.
+///
+/// The macro takes in a type declaration and creates a new type that implements
+/// the `Setting` trait. The type declaration is used to create a new type that
+/// wraps the setting value.
+///
+/// The macro also creates a `Setting` instance that can be used to register the
+/// setting.
+///
+/// The type declaration should have the following form:
+///
+/// ```ignore
+/// [name]: [Type]
+/// ```
+#[proc_macro]
+pub fn define_setting(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as Setting);
+
+    assert!(
+        input.name.is_case(Case::Snake),
+        "Setting name must be snake case"
+    );
+
+    let name = input.name;
+    let ty = input.ty;
+
+    let struct_name = Ident::new(
+        name.to_case(Case::Pascal).add("Setting").as_str(),
+        Span::call_site(),
+    );
+    let instance_name = Ident::new(
+        name.to_case(Case::UpperSnake).add("_SETTING").as_str(),
+        Span::call_site(),
+    );
+
+    let output = quote! {
+        pub struct #struct_name;
+
+        #[async_trait::async_trait]
+        impl Setting for #struct_name {
+            type Value = #ty;
+
+            fn name(&self) -> &'static str {
+                #name
+            }
         }
 
         pub const #instance_name: #struct_name = #struct_name;
