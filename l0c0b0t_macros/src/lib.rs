@@ -65,7 +65,7 @@ pub fn command(attr: TokenStream, input: TokenStream) -> TokenStream {
         pub struct #struct_name;
 
         #[async_trait::async_trait]
-        impl Command for #struct_name {
+        impl crate::framework::commands::Command for #struct_name {
             fn name(&self) -> &'static str {
                 #name
             }

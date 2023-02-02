@@ -2,8 +2,6 @@ use lazy_static::lazy_static;
 
 use l0c0b0t_macros::command;
 
-use crate::framework::commands::Command;
-
 lazy_static! {
     pub static ref SUBE_ANSWERS: Vec<&'static str> = vec![
         "La sube mucho",
