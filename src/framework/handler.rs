@@ -1,20 +1,67 @@
-use serenity::{client::Context, model::channel::Message};
+use serenity::{
+    client::Context,
+    model::{channel::Message, prelude::GuildId},
+};
 
-use super::commands::Command;
+use super::{
+    commands::Command,
+    settings::{Setting, SettingsError},
+};
 
 /// Handler for commands that are not called by prefix.
 pub struct L0C0B0THandler {
     commands: Vec<Box<dyn Command>>,
+    settings: Vec<Box<dyn Setting>>,
 }
 
 impl L0C0B0THandler {
     pub fn new() -> Self {
-        Self { commands: vec![] }
+        Self {
+            commands: vec![],
+            settings: vec![],
+        }
     }
 
     pub fn command(mut self, group: impl Command) -> Self {
         self.commands.push(Box::new(group));
         self
+    }
+
+    pub fn setting(mut self, setting: impl Setting) -> Self {
+        self.settings.push(Box::new(setting));
+        self
+    }
+
+    pub async fn set_setting(
+        &self,
+        ctx: &Context,
+        guild_id: GuildId,
+        name: &str,
+        value: &str,
+    ) -> Result<(), SettingsError> {
+        for setting in &self.settings {
+            if setting.name() == name {
+                setting.set_string(ctx, guild_id, value).await?;
+                return Ok(());
+            }
+        }
+
+        Err(SettingsError::InvalidSetting)
+    }
+
+    pub async fn get_setting(
+        &self,
+        ctx: &Context,
+        guild_id: GuildId,
+        name: &str,
+    ) -> Result<String, SettingsError> {
+        for setting in &self.settings {
+            if setting.name() == name {
+                return setting.get_string(ctx, guild_id).await;
+            }
+        }
+
+        Err(SettingsError::InvalidSetting)
     }
 
     /// Dispatches a message to the commands.

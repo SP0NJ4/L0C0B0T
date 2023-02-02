@@ -1,64 +1,87 @@
-use std::{collections::HashMap, str::FromStr};
+use std::collections::HashMap;
 
 use async_trait::async_trait;
-use serenity::{model::prelude::GuildId, prelude::Context};
+use serenity::{
+    model::prelude::GuildId,
+    prelude::{Context, TypeMapKey},
+};
 use thiserror::Error;
-use typemap::{Key, ShareMap};
 
 #[derive(Debug, Clone, Error)]
-pub enum SettingsError {}
+pub enum SettingsError {
+    #[error("Los settings no se pudieron acceder")]
+    SettingsNotAccessible,
 
-impl Key for SettingsError {
-    type Value = SettingsError;
+    #[error("El valor no es válido")]
+    InvalidValue,
+
+    #[error("Setting inválido")]
+    InvalidSetting,
 }
 
 #[async_trait]
-pub trait Setting: Send + Sync + 'static + Sized {
-    type Value: FromStr + Default + ToString + Send + Sync + 'static + Clone;
-
+pub trait Setting: Send + Sync + 'static {
     fn name(&self) -> &'static str;
 
-    async fn get(&self, ctx: &Context, guild_id: GuildId) -> Self::Value {
+    fn default_value(&self) -> String;
+
+    fn validate(&self, s: &str) -> bool;
+
+    /// Get the value of this setting for the given guild in a string format.
+    ///
+    /// If the value is not set, it will be set to the default value.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the value could not be set.
+    async fn get_string(&self, ctx: &Context, guild_id: GuildId) -> Result<String, SettingsError> {
         let value = {
             let data = ctx.data.read().await;
-            let settings = data.get::<Settings>().unwrap();
+            let settings = data
+                .get::<Settings>()
+                .ok_or(SettingsError::SettingsNotAccessible)?;
             settings
                 .get(&guild_id)
-                .and_then(|map| map.get::<SettingKey<Self>>().cloned())
+                .and_then(|map| map.get(self.name()).cloned())
         };
 
         match value {
-            Some(value) => value,
+            Some(value) => Ok(value),
             None => {
-                let value = Self::Value::default();
-                self.set(ctx, guild_id, value.clone()).await.unwrap();
-                value
+                let value = self.default_value();
+                self.set_string(ctx, guild_id, &value).await?;
+                Ok(value)
             }
         }
     }
 
-    async fn set(
+    /// Set the value of this setting for the given guild.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the value could not be set.
+    async fn set_string(
         &self,
         ctx: &Context,
         guild_id: GuildId,
-        value: Self::Value,
+        value: &str,
     ) -> Result<(), SettingsError> {
+        if !self.validate(value) {
+            return Err(SettingsError::InvalidValue);
+        }
+
         let mut data = ctx.data.write().await;
-        let settings = data.get_mut::<Settings>().unwrap();
-        let map = settings.entry(guild_id).or_insert_with(ShareMap::custom);
-        map.insert::<SettingKey<Self>>(value);
+        let settings = data
+            .get_mut::<Settings>()
+            .ok_or(SettingsError::SettingsNotAccessible)?;
+        let map = settings.entry(guild_id).or_insert_with(HashMap::new);
+        map.insert(self.name().to_string(), value.to_string());
         Ok(())
     }
 }
 
-struct Settings;
+pub struct Settings;
 
-impl serenity::prelude::TypeMapKey for Settings {
-    type Value = HashMap<GuildId, ShareMap>;
-}
-
-pub struct SettingKey<T: Setting>(T);
-
-impl<T: Setting> Key for SettingKey<T> {
-    type Value = T::Value;
+impl TypeMapKey for Settings {
+    type Value = HashMap<GuildId, HashMap<String, String>>;
 }
