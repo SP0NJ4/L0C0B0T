@@ -8,6 +8,7 @@ use serenity::{
     prelude::Context,
 };
 
+use crate::commands::music::settings::MUSIC_CHANNEL_SETTING;
 use crate::commands::sube_baja::SUBE_BAJA_COMMAND;
 
 pub mod commands;
@@ -53,6 +54,7 @@ async fn setting(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult 
 struct General;
 
 lazy_static! {
-    pub static ref L0C0B0T_HANDLER: L0C0B0THandler =
-        L0C0B0THandler::new().command(SUBE_BAJA_COMMAND);
+    pub static ref L0C0B0T_HANDLER: L0C0B0THandler = L0C0B0THandler::new()
+        .command(SUBE_BAJA_COMMAND)
+        .setting(MUSIC_CHANNEL_SETTING);
 }

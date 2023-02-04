@@ -10,10 +10,7 @@ use serenity::{
 };
 use songbird::serenity::SerenityInit;
 
-use crate::framework::{
-    handler::L0C0B0THandler, settings::Settings, utils::handle_error, GENERAL_GROUP,
-    L0C0B0T_HANDLER,
-};
+use crate::framework::{settings::Settings, utils::handle_error, GENERAL_GROUP, L0C0B0T_HANDLER};
 
 use crate::commands::{music::MUSIC_GROUP, testing::TESTING_GROUP};
 

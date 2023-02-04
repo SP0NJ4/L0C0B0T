@@ -6,6 +6,7 @@ mod client;
 mod commands;
 mod framework;
 mod globals;
+mod utils;
 
 use client::L0C0B0TClient;
 

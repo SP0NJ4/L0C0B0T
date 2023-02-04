@@ -2,6 +2,7 @@ use serenity::framework::standard::macros::group;
 
 mod errors;
 mod utils;
+pub mod settings;
 
 mod channels;
 mod play;
