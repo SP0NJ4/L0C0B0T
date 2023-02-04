@@ -1,8 +1,8 @@
 use serenity::framework::standard::macros::group;
 
 mod errors;
-mod utils;
 pub mod settings;
+mod utils;
 
 mod channels;
 mod play;
@@ -12,6 +12,8 @@ mod responses;
 use channels::*;
 use play::*;
 use queue::*;
+
+use settings::IN_MUSIC_CHANNEL_CHECK;
 
 #[group]
 #[commands(
@@ -30,4 +32,5 @@ use queue::*;
     join,
     leave
 )]
+#[checks(in_music_channel)]
 struct Music;
