@@ -135,11 +135,11 @@ pub fn define_setting(input: TokenStream) -> TokenStream {
 
         impl #struct_name {
             async fn get(&self, ctx: &serenity::prelude::Context, guild_id: serenity::model::id::GuildId) -> Result<#ty, crate::framework::settings::SettingsError> {
-                self.get_string(ctx, guild_id)?.await.parse().unwrap()
+                Ok(<#struct_name as crate::framework::settings::Setting>::get_string(self, ctx, guild_id).await?.parse().map_err(|_| crate::framework::settings::SettingsError::InvalidValue)?)
             }
 
             async fn set(&self, ctx: &serenity::prelude::Context, guild_id: serenity::model::id::GuildId, value: #ty) -> Result<(), crate::framework::settings::SettingsError> {
-                self.set_string(ctx, guild_id, value).await?
+                Ok(<#struct_name as crate::framework::settings::Setting>::set_string(self, ctx, guild_id, &value.to_string()).await?)
             }
         }
 
