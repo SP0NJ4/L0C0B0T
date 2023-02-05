@@ -4,7 +4,7 @@ use serenity::{
 };
 
 use super::{
-    commands::Command,
+    commands::traits::Command,
     settings::{Setting, SettingsError},
 };
 
