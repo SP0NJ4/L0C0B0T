@@ -71,7 +71,7 @@ impl L0C0B0TClient {
         let client = serenity::Client::builder(token, intents)
             .framework(
                 StandardFramework::new()
-                    .configure(|c| c.prefix("!"))
+                    .configure(|c| c.prefix("!").case_insensitivity(true))
                     .before(before)
                     .after(after)
                     .normal_message(normal_message)
