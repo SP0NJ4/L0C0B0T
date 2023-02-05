@@ -1,3 +1,5 @@
+use std::env;
+
 use serenity::{
     client::Context,
     model::{channel::Message, prelude::GuildId},
@@ -6,7 +8,7 @@ use serenity::{
 
 use super::{
     commands::traits::Command,
-    settings::{Setting, SettingsError},
+    settings::{Setting, Settings, SettingsError},
 };
 
 /// Handler for commands that are not called by prefix.
@@ -43,6 +45,16 @@ impl L0C0B0THandler {
         for setting in &self.settings {
             if setting.name() == name {
                 setting.set_string(ctx, guild_id, value).await?;
+
+                if env::var("SETTINGS_PATH").is_ok() {
+                    let data = ctx.data.read().await;
+                    let settings = data
+                        .get::<Settings>()
+                        .ok_or(SettingsError::SettingsNotAccessible)?;
+
+                    settings.save()?;
+                }
+
                 return Ok(());
             }
         }

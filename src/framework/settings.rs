@@ -1,6 +1,12 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    env,
+    fs::File,
+    io::{BufReader, BufWriter},
+};
 
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use serenity::{
     framework::standard::macros::command,
     framework::standard::{Args, CommandResult},
@@ -24,6 +30,13 @@ pub enum SettingsError {
     InvalidSetting,
 }
 
+/// A setting for the bot.
+/// This trait is used to define a setting's name, default value, and validation.
+/// It also provides methods to get and set the setting's string value (`get_string` and `set_string`).
+///
+/// ---
+///
+/// The trait is type-agnostic, so all type-related logic must be handled using the `define_setting!` macro.
 #[async_trait]
 pub trait Setting: Send + Sync + 'static {
     fn name(&self) -> &'static str;
@@ -45,9 +58,7 @@ pub trait Setting: Send + Sync + 'static {
             let settings = data
                 .get::<Settings>()
                 .ok_or(SettingsError::SettingsNotAccessible)?;
-            settings
-                .get(&guild_id)
-                .and_then(|map| map.get(self.name()).cloned())
+            settings.get(&guild_id, &self.name().to_string())
         };
 
         match value {
@@ -79,16 +90,66 @@ pub trait Setting: Send + Sync + 'static {
         let settings = data
             .get_mut::<Settings>()
             .ok_or(SettingsError::SettingsNotAccessible)?;
-        let map = settings.entry(guild_id).or_insert_with(HashMap::new);
-        map.insert(self.name().to_string(), value.to_string());
+        settings.set(&guild_id, self.name(), value);
         Ok(())
     }
 }
 
-pub struct Settings;
+/// The collection of settings for the bot.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Settings {
+    settings: HashMap<u64, HashMap<String, String>>,
+}
+
+impl Settings {
+    /// Create a new, empty settings collection.
+    pub fn new() -> Self {
+        Self {
+            settings: HashMap::new(),
+        }
+    }
+
+    /// Get the value of a setting for a guild.
+    pub fn get(&self, id: &GuildId, setting: &str) -> Option<String> {
+        self.settings
+            .get(&id.0)
+            .and_then(|map| map.get(setting).cloned())
+    }
+
+    /// Set the value of a setting for a guild.
+    pub fn set(&mut self, id: &GuildId, setting: &str, value: &str) {
+        let map = self.settings.entry(id.0).or_insert_with(HashMap::new);
+        map.insert(setting.to_string(), value.to_string());
+    }
+
+    /// Try to load settings from the file specified in the `SETTINGS_PATH` environment variable.
+    ///
+    /// Returns `None` if the environment variable is not set or the file could not be opened.
+    pub fn try_load() -> Option<Self> {
+        let path = env::var("SETTINGS_PATH").ok()?;
+        let file = File::open(&path).ok()?;
+        let reader = BufReader::new(file);
+        let settings = ron::de::from_reader(reader).ok()?;
+        println!("Loaded settings from {path}");
+        Some(settings)
+    }
+
+    /// Save the settings to the file specified in the `SETTINGS_PATH` environment variable.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the environment variable is not set or the file could not be opened.
+    pub fn save(&self) -> Result<(), SettingsError> {
+        let path = env::var("SETTINGS_PATH").map_err(|_| SettingsError::SettingsNotAccessible)?;
+        let file = File::create(path).map_err(|_| SettingsError::SettingsNotAccessible)?;
+        let mut writer = BufWriter::new(file);
+        ron::ser::to_writer_pretty(&mut writer, self, ron::ser::PrettyConfig::default())
+            .map_err(|_| SettingsError::SettingsNotAccessible)
+    }
+}
 
 impl TypeMapKey for Settings {
-    type Value = HashMap<GuildId, HashMap<String, String>>;
+    type Value = Self;
 }
 
 #[command]

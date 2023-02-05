@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use serenity::{
     framework::{
         standard::{
@@ -86,7 +84,7 @@ impl L0C0B0TClient {
 
         {
             let mut data = client.data.write().await;
-            data.insert::<Settings>(HashMap::new());
+            data.insert::<Settings>(Settings::try_load().unwrap_or(Settings::new()));
             data.insert::<HandlerRef>(handler_ref);
         }
 
