@@ -22,12 +22,12 @@ pub(super) async fn in_music_channel(
 ) -> Result<(), Reason> {
     let guild_id = msg
         .guild_id
-        .ok_or(Reason::User("No estás en un servidor".into()))?;
+        .ok_or_else(|| Reason::User("No estás en un servidor".into()))?;
     let channel_id = msg.channel_id;
 
     let music_channel = get_music_channel(ctx, guild_id).await;
 
-    if music_channel == None || music_channel == Some(channel_id) {
+    if music_channel.is_none() || music_channel == Some(channel_id) {
         Ok(())
     } else {
         msg.reply(ctx, "No estás en el canal de música")

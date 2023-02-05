@@ -5,6 +5,7 @@ use serenity::{
     prelude::Mentionable,
 };
 
+#[derive(Debug, Clone, Default)]
 pub struct OptionalChannel(pub Option<ChannelId>);
 
 impl FromStr for OptionalChannel {
@@ -33,11 +34,5 @@ impl Display for OptionalChannel {
             Some(channel_id) => write!(f, "{}", channel_id.mention()),
             None => write!(f, "ninguno"),
         }
-    }
-}
-
-impl Default for OptionalChannel {
-    fn default() -> Self {
-        Self(None)
     }
 }

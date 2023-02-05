@@ -58,7 +58,7 @@ pub trait Setting: Send + Sync + 'static {
             let settings = data
                 .get::<Settings>()
                 .ok_or(SettingsError::SettingsNotAccessible)?;
-            settings.get(&guild_id, &self.name().to_string())
+            settings.get(&guild_id, self.name())
         };
 
         match value {
@@ -166,7 +166,7 @@ async fn setting(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult 
             let value = args.rest();
             get_handler(ctx)
                 .await
-                .set_setting(ctx, guild_id, &setting, &value)
+                .set_setting(ctx, guild_id, &setting, value)
                 .await?;
 
             msg.reply(ctx, format!("`{setting}` actualizado a `{value}`"))
@@ -177,7 +177,7 @@ async fn setting(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult 
                 .await
                 .get_setting(ctx, guild_id, &setting)
                 .await?;
-            msg.reply(ctx, format!("Valor de `{}`: `{}`", setting, value))
+            msg.reply(ctx, format!("Valor de `{setting}`: `{value}`"))
                 .await?;
         }
         _ => {
