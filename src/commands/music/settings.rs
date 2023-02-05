@@ -30,6 +30,10 @@ pub(super) async fn in_music_channel(
     if music_channel == None || music_channel == Some(channel_id) {
         Ok(())
     } else {
-        Err(Reason::User("No estás en el canal de música".into()))
+        msg.reply(ctx, "No estás en el canal de música")
+            .await
+            .unwrap();
+
+        Err(Reason::User("Not in music channel".into()))
     }
 }
