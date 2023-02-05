@@ -2,10 +2,15 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use serenity::{
+    framework::standard::macros::command,
+    framework::standard::{Args, CommandResult},
     model::prelude::GuildId,
+    model::prelude::Message,
     prelude::{Context, TypeMapKey},
 };
 use thiserror::Error;
+
+use super::handler::get_handler;
 
 #[derive(Debug, Clone, Error)]
 pub enum SettingsError {
@@ -84,4 +89,40 @@ pub struct Settings;
 
 impl TypeMapKey for Settings {
     type Value = HashMap<GuildId, HashMap<String, String>>;
+}
+
+#[command]
+#[only_in(guilds)]
+#[required_permissions("MANAGE_GUILD")]
+async fn setting(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let mode: String = args.single()?;
+    let setting: String = args.single()?;
+
+    let guild_id = msg.guild_id.unwrap();
+
+    match mode.as_str() {
+        "set" => {
+            let value = args.rest();
+            get_handler(ctx)
+                .await
+                .set_setting(ctx, guild_id, &setting, &value)
+                .await?;
+
+            msg.reply(ctx, format!("`{setting}` actualizado a `{value}`"))
+                .await?;
+        }
+        "get" => {
+            let value = get_handler(ctx)
+                .await
+                .get_setting(ctx, guild_id, &setting)
+                .await?;
+            msg.reply(ctx, format!("Valor de `{}`: `{}`", setting, value))
+                .await?;
+        }
+        _ => {
+            return Err("Modo inválido: `set` o `get`".into());
+        }
+    }
+
+    Ok(())
 }

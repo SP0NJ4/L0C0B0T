@@ -1,6 +1,7 @@
 use serenity::{
     client::Context,
     model::{channel::Message, prelude::GuildId},
+    prelude::TypeMapKey,
 };
 
 use super::{
@@ -76,4 +77,31 @@ impl L0C0B0THandler {
             }
         }
     }
+}
+
+pub struct HandlerRef {
+    handler: &'static L0C0B0THandler,
+}
+
+impl HandlerRef {
+    pub fn new(handler: &'static L0C0B0THandler) -> Self {
+        Self { handler }
+    }
+
+    pub fn get(&self) -> &'static L0C0B0THandler {
+        self.handler
+    }
+}
+
+impl TypeMapKey for HandlerRef {
+    type Value = Self;
+}
+
+pub async fn get_handler(ctx: &Context) -> &'static L0C0B0THandler {
+    ctx.data
+        .read()
+        .await
+        .get::<HandlerRef>()
+        .expect("Handler not set")
+        .get()
 }

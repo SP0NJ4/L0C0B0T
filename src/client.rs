@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use serenity::{
     framework::{
-        standard::{macros::hook, CommandError},
+        standard::{
+            macros::{group, hook},
+            CommandError,
+        },
         StandardFramework,
     },
     model::prelude::*,
@@ -10,9 +13,18 @@ use serenity::{
 };
 use songbird::serenity::SerenityInit;
 
-use crate::framework::{settings::Settings, utils::handle_error, GENERAL_GROUP, L0C0B0T_HANDLER};
+use crate::framework::{
+    handler::HandlerRef,
+    settings::{Settings, SETTING_COMMAND},
+    utils::handle_error,
+    L0C0B0T_HANDLER,
+};
 
 use crate::commands::{music::MUSIC_GROUP, testing::TESTING_GROUP};
+
+#[group]
+#[commands(setting)]
+struct General;
 
 #[hook]
 async fn before(
@@ -51,7 +63,12 @@ pub struct L0C0B0TClient {
 
 impl L0C0B0TClient {
     pub async fn new(token: &str) -> Result<Self, serenity::Error> {
-        let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
+        let intents = GatewayIntents::non_privileged()
+            | GatewayIntents::MESSAGE_CONTENT
+            | GatewayIntents::GUILD_MEMBERS
+            | GatewayIntents::GUILD_PRESENCES;
+
+        let handler_ref = HandlerRef::new(&L0C0B0T_HANDLER);
 
         let client = serenity::Client::builder(token, intents)
             .framework(
@@ -67,7 +84,11 @@ impl L0C0B0TClient {
             .register_songbird()
             .await?;
 
-        client.data.write().await.insert::<Settings>(HashMap::new());
+        {
+            let mut data = client.data.write().await;
+            data.insert::<Settings>(HashMap::new());
+            data.insert::<HandlerRef>(handler_ref);
+        }
 
         Ok(Self { client })
     }
