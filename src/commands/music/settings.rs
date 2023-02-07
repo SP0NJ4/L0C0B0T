@@ -2,7 +2,7 @@ use l0c0b0t_macros::define_setting;
 use serenity::{
     framework::standard::{macros::check, Args, CommandOptions, Reason},
     model::prelude::{ChannelId, GuildId, Message},
-    prelude::Context,
+    prelude::{Context, Mentionable},
 };
 
 use crate::utils::OptionalChannel;
@@ -30,9 +30,16 @@ pub(super) async fn in_music_channel(
     if music_channel.is_none() || music_channel == Some(channel_id) {
         Ok(())
     } else {
-        msg.reply(ctx, "No estás en el canal de música")
-            .await
-            .unwrap();
+        let mention = msg.author.mention();
+
+        msg.reply(
+            ctx,
+            format!(
+                "⚠️ ALERTA DE IDIOTA ⚠️ {mention} trató de poner comandos de música por este canal"
+            ),
+        )
+        .await
+        .unwrap();
 
         Err(Reason::User("Not in music channel".into()))
     }
