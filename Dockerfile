@@ -3,13 +3,14 @@ FROM rust:1.66.1 as build
 
 WORKDIR /usr/src/L0C0B0T
 
-# Add source code
-COPY ["Cargo.toml", "Cargo.lock", "./"] 
-ADD src/ src/
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake
+
+# Add source code
+COPY ["Cargo.toml", "Cargo.lock", "./"] 
+ADD src/ src/
+ADD l0c0b0t_macros/ l0c0b0t_macros/
 
 # Compile and install
 RUN cargo install --path .
