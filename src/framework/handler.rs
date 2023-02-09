@@ -1,20 +1,80 @@
-use serenity::{client::Context, model::channel::Message};
+use std::env;
 
-use super::command::Command;
+use serenity::{
+    client::Context,
+    model::{channel::Message, prelude::GuildId},
+    prelude::TypeMapKey,
+};
+
+use super::{
+    commands::traits::Command,
+    settings::{Setting, Settings, SettingsError},
+};
 
 /// Handler for commands that are not called by prefix.
 pub struct L0C0B0THandler {
     commands: Vec<Box<dyn Command>>,
+    settings: Vec<Box<dyn Setting>>,
 }
 
 impl L0C0B0THandler {
     pub fn new() -> Self {
-        Self { commands: vec![] }
+        Self {
+            commands: vec![],
+            settings: vec![],
+        }
     }
 
     pub fn command(mut self, group: impl Command) -> Self {
         self.commands.push(Box::new(group));
         self
+    }
+
+    pub fn setting(mut self, setting: impl Setting) -> Self {
+        self.settings.push(Box::new(setting));
+        self
+    }
+
+    pub async fn set_setting(
+        &self,
+        ctx: &Context,
+        guild_id: GuildId,
+        name: &str,
+        value: &str,
+    ) -> Result<(), SettingsError> {
+        for setting in &self.settings {
+            if setting.name() == name {
+                setting.set_string(ctx, guild_id, value).await?;
+
+                if env::var("SETTINGS_PATH").is_ok() {
+                    let data = ctx.data.read().await;
+                    let settings = data
+                        .get::<Settings>()
+                        .ok_or(SettingsError::SettingsNotAccessible)?;
+
+                    settings.save()?;
+                }
+
+                return Ok(());
+            }
+        }
+
+        Err(SettingsError::InvalidSetting)
+    }
+
+    pub async fn get_setting(
+        &self,
+        ctx: &Context,
+        guild_id: GuildId,
+        name: &str,
+    ) -> Result<String, SettingsError> {
+        for setting in &self.settings {
+            if setting.name() == name {
+                return setting.get_string(ctx, guild_id).await;
+            }
+        }
+
+        Err(SettingsError::InvalidSetting)
     }
 
     /// Dispatches a message to the commands.
@@ -29,4 +89,31 @@ impl L0C0B0THandler {
             }
         }
     }
+}
+
+pub struct HandlerRef {
+    handler: &'static L0C0B0THandler,
+}
+
+impl HandlerRef {
+    pub fn new(handler: &'static L0C0B0THandler) -> Self {
+        Self { handler }
+    }
+
+    pub fn get(&self) -> &'static L0C0B0THandler {
+        self.handler
+    }
+}
+
+impl TypeMapKey for HandlerRef {
+    type Value = Self;
+}
+
+pub async fn get_handler(ctx: &Context) -> &'static L0C0B0THandler {
+    ctx.data
+        .read()
+        .await
+        .get::<HandlerRef>()
+        .expect("Handler not set")
+        .get()
 }

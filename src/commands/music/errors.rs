@@ -1,43 +1,25 @@
-use std::{
-    error::Error,
-    fmt::{Display, Formatter},
-};
+use thiserror::Error;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Error)]
 pub enum MusicCommandError {
+    #[error("No estoy tocando nada")]
     NoSongPlaying,
+    #[error("Tiempo inválido")]
     InvalidTime,
+    #[error("Índice inválido")]
     InvalidQueueIndex,
+    #[error("No encontré la canción")]
     FailedVideoSearch,
+    #[error("La cola está vacía")]
     EmptyQueue,
+    #[error("No estás en un canal de voz")]
     NoVoiceChannel,
+    #[error("No me pude unir al canal")]
     FailedToJoinChannel,
+    #[error("No estoy en un canal de voz")]
     NotInVoiceChannel,
+    #[error("Este formato no se puede seekear")]
     SeekFailed,
-    Other(&'static str),
+    #[error("Error")]
+    Generic,
 }
-
-impl From<MusicCommandError> for &'static str {
-    fn from(error: MusicCommandError) -> Self {
-        match error {
-            MusicCommandError::NoSongPlaying => "No estoy tocando nada",
-            MusicCommandError::InvalidTime => "Tiempo Inválido",
-            MusicCommandError::InvalidQueueIndex => "Índice inválido",
-            MusicCommandError::FailedVideoSearch => "No encontré la canción",
-            MusicCommandError::EmptyQueue => "La cola está vacía",
-            MusicCommandError::NoVoiceChannel => "No estás en un canal de voz",
-            MusicCommandError::FailedToJoinChannel => "No me pude unir al canal",
-            MusicCommandError::NotInVoiceChannel => "No estoy en un canal de voz",
-            MusicCommandError::SeekFailed => "Este formato no se puede seekear",
-            MusicCommandError::Other(msg) => msg,
-        }
-    }
-}
-
-impl Display for MusicCommandError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", Into::<&str>::into(*self))
-    }
-}
-
-impl Error for MusicCommandError {}

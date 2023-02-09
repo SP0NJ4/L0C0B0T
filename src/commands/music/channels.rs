@@ -40,7 +40,7 @@ pub async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
     handler
         .leave()
         .await
-        .map_err(|_| MusicCommandError::Other("No pude salir del canal"))?;
+        .map_err(|_| MusicCommandError::Generic)?;
 
     msg.channel_id.say(&ctx.http, "Chau 😔").await?;
 

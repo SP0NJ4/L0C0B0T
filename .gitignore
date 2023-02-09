@@ -1,5 +1,8 @@
 # Cargo generated files
-/target
+**/target
 
 # Environment variables
 *.env
+
+# Settings file
+settings.ron

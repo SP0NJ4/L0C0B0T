@@ -124,12 +124,22 @@ pub(super) async fn song_added_embed(
     if index > 0 {
         embed.field("Posición", index, true);
 
+        let first_track_time_left = {
+            let first_track = queue.first().unwrap();
+            let first_track_duration = first_track.metadata().duration.unwrap();
+            let first_track_position = first_track.get_info().await.unwrap().position;
+
+            first_track_duration - first_track_position
+        };
+
         let time_to_play = queue
             .iter()
-            .take(index)
+            .skip(1)
+            .take(index - 1)
             .fold(Duration::new(0, 0), |acc, track| {
                 acc + track.metadata().duration.unwrap()
-            });
+            })
+            + first_track_time_left;
 
         embed.field(
             "Tiempo hasta que toque",
