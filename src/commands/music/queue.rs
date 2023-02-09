@@ -192,7 +192,7 @@ pub async fn clear(ctx: &Context, msg: &Message) -> CommandResult {
         });
 
         msg.channel_id
-            .say(&ctx.http, "💥 **Limpiando la cola**")
+            .say(&ctx.http, "💥 **Limpiando la cola...**")
             .await?;
 
         Ok(())
