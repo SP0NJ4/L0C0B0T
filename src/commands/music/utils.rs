@@ -331,6 +331,38 @@ pub(super) async fn insert_song(
     }
 }
 
+/// Removes a song from the queue
+///
+/// ## Arguments
+///
+/// * `handler_lock` - A lock to the songbird handler
+/// * `index` - The index of the song to remove
+///
+/// ## Returns
+///
+/// * `Ok(String)` - The title of the song that was removed
+/// * `Err` - The song was not removed
+pub(super) async fn remove_song(
+    handler_lock: Arc<Mutex<Call>>,
+    index: usize,
+) -> Result<String, MusicCommandError> {
+    let handler = handler_lock.lock().await;
+
+    let queue = handler.queue();
+
+    if index >= queue.len() || index == 0 {
+        return Err(MusicCommandError::InvalidQueueIndex);
+    }
+
+    let mut removed_title = None;
+
+    queue.modify_queue(|q| {
+        removed_title = q.remove(index).unwrap().metadata().title.clone();
+    });
+
+    removed_title.ok_or(MusicCommandError::InvalidQueueIndex)
+}
+
 /// Searches for a song in youtube
 ///
 /// ## Arguments

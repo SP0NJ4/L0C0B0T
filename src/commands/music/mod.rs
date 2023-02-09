@@ -28,6 +28,7 @@ use settings::IN_MUSIC_CHANNEL_CHECK;
     insert,
     move_,
     remove,
+    replace,
     clear,
     join,
     leave
