@@ -25,7 +25,8 @@ ENV DISCORD_TOKEN=$EXT_DISCORD_TOKEN
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     python3 \
-    python3-pip
+    python3-pip \
+    libopus-dev
 
 # Install yt-dlp
 RUN pip3 install --no-cache --upgrade yt-dlp

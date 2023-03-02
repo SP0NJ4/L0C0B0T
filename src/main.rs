@@ -19,8 +19,7 @@ async fn main() {
 
     let mut client = L0C0B0TClient::new(&token)
         .await
-        .map_err(|err| format!("Error creating client: {err}"))
-        .unwrap();
+        .expect("Error creating client");
 
-    client.start().await.unwrap();
+    client.start().await.expect("Error while running client");
 }
