@@ -111,6 +111,11 @@ pub(super) async fn get_handler_lock(
             .and_then(|vs| vs.channel_id)
             .ok_or(MusicCommandError::NoVoiceChannel)?;
 
+        println!(
+            "Joining voice channel {:?} in guild '{}'",
+            channel_id, guild.name
+        );
+
         let (handler_lock, success) = manager.join(guild.id, channel_id).await;
 
         if success.is_err() {
