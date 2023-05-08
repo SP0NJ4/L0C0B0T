@@ -15,7 +15,7 @@ use super::{errors::MusicCommandError, utils::get_handler_lock};
 #[command]
 #[only_in(guilds)]
 pub async fn join(ctx: &Context, msg: &Message) -> CommandResult {
-    let handler_lock = get_handler_lock(ctx, msg, true).await?;
+    let handler_lock = get_handler_lock(ctx, msg).await?;
 
     let handler = handler_lock.lock().await;
 
@@ -33,7 +33,7 @@ pub async fn join(ctx: &Context, msg: &Message) -> CommandResult {
 #[only_in(guilds)]
 #[aliases("dc", "disconnect", "disc")]
 pub async fn leave(ctx: &Context, msg: &Message) -> CommandResult {
-    let handler_lock = get_handler_lock(ctx, msg, false).await?;
+    let handler_lock = get_handler_lock(ctx, msg).await?;
 
     let mut handler = handler_lock.lock().await;
 
