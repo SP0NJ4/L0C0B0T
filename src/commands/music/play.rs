@@ -21,7 +21,7 @@ use super::{
 #[only_in(guilds)]
 #[aliases("p")]
 pub async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let handler_lock = get_handler_lock(ctx, msg, true).await?;
+    let handler_lock = get_handler_lock(ctx, msg).await?;
 
     let query = args.rest();
 
@@ -37,6 +37,8 @@ pub async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             QueuePosition::Last,
         )
         .await?;
+
+        println!("Inserted song at position {position}");
 
         let embed = {
             let handler = handler_lock.lock().await;
@@ -59,7 +61,7 @@ pub async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[only_in(guilds)]
 #[aliases("pete", "pt")]
 pub async fn play_top(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let handler_lock = get_handler_lock(ctx, msg, true).await?;
+    let handler_lock = get_handler_lock(ctx, msg).await?;
 
     let query = args.rest();
 
@@ -100,7 +102,7 @@ pub async fn play_top(ctx: &Context, msg: &Message, args: Args) -> CommandResult
 #[only_in(guilds)]
 #[aliases("s", "fs")]
 pub async fn skip(ctx: &Context, msg: &Message) -> CommandResult {
-    let handler_lock = get_handler_lock(ctx, msg, false).await?;
+    let handler_lock = get_handler_lock(ctx, msg).await?;
     let handler = handler_lock.lock().await;
 
     let queue = handler.queue();
@@ -119,7 +121,7 @@ pub async fn skip(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[only_in(guilds)]
 pub async fn pause(ctx: &Context, msg: &Message) -> CommandResult {
-    let handler_lock = get_handler_lock(ctx, msg, false).await?;
+    let handler_lock = get_handler_lock(ctx, msg).await?;
 
     pause_song(handler_lock).await?;
 
@@ -131,7 +133,7 @@ pub async fn pause(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[only_in(guilds)]
 pub async fn resume(ctx: &Context, msg: &Message) -> CommandResult {
-    let handler_lock = get_handler_lock(ctx, msg, false).await?;
+    let handler_lock = get_handler_lock(ctx, msg).await?;
 
     resume_song(handler_lock).await?;
 
@@ -143,7 +145,7 @@ pub async fn resume(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[only_in(guilds)]
 pub async fn stop(ctx: &Context, msg: &Message) -> CommandResult {
-    let handler_lock = get_handler_lock(ctx, msg, false).await?;
+    let handler_lock = get_handler_lock(ctx, msg).await?;
 
     stop_player(handler_lock).await?;
 
@@ -153,7 +155,7 @@ pub async fn stop(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 #[only_in(guilds)]
 pub async fn seek(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let handler_lock = get_handler_lock(ctx, msg, false).await?;
+    let handler_lock = get_handler_lock(ctx, msg).await?;
     let handler = handler_lock.lock().await;
 
     let track = handler

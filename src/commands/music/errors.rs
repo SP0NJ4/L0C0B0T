@@ -16,8 +16,6 @@ pub enum MusicCommandError {
     NoVoiceChannel,
     #[error("No me pude unir al canal")]
     FailedToJoinChannel,
-    #[error("No estoy en un canal de voz")]
-    NotInVoiceChannel,
     #[error("Este formato no se puede seekear")]
     SeekFailed,
     #[error("Error")]

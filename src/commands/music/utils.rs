@@ -92,53 +92,37 @@ impl EventHandler for IdleHandler {
 pub(super) async fn get_handler_lock(
     ctx: &Context,
     msg: &Message,
-    join_if_not_in_channel: bool,
 ) -> Result<Arc<Mutex<Call>>, MusicCommandError> {
     let manager = songbird::get(ctx).await.unwrap().clone();
 
     let guild = msg.guild(&ctx.cache).unwrap();
 
-    let handler_lock = manager.get(guild.id);
+    let channel_id = guild
+        .voice_states
+        .get(&msg.author.id)
+        .and_then(|vs| vs.channel_id)
+        .ok_or(MusicCommandError::NoVoiceChannel)?;
 
-    let handler_lock = if let Some(handler_lock) = handler_lock {
-        handler_lock
-    } else if !join_if_not_in_channel {
-        return Err(MusicCommandError::NotInVoiceChannel);
-    } else {
-        let channel_id = guild
-            .voice_states
-            .get(&msg.author.id)
-            .and_then(|vs| vs.channel_id)
-            .ok_or(MusicCommandError::NoVoiceChannel)?;
+    let (handler_lock, success) = manager.join(guild.id, channel_id).await;
 
-        println!(
-            "Joining voice channel {:?} in guild '{}'",
-            channel_id, guild.name
+    if success.is_err() {
+        return Err(MusicCommandError::FailedToJoinChannel);
+    }
+
+    {
+        let mut handler = handler_lock.lock().await;
+
+        handler.remove_all_global_events();
+
+        handler.add_global_event(
+            Event::Periodic(Duration::from_secs(*IDLE_CHECK_PERIOD), None),
+            IdleHandler {
+                manager: manager.clone(),
+                guild_id: guild.id.into(),
+                count: Arc::new(AtomicU64::new(0)),
+            },
         );
-
-        let (handler_lock, success) = manager.join(guild.id, channel_id).await;
-
-        if success.is_err() {
-            return Err(MusicCommandError::FailedToJoinChannel);
-        }
-
-        {
-            let mut handler = handler_lock.lock().await;
-
-            handler.remove_all_global_events();
-
-            handler.add_global_event(
-                Event::Periodic(Duration::from_secs(*IDLE_CHECK_PERIOD), None),
-                IdleHandler {
-                    manager: manager.clone(),
-                    guild_id: guild.id.into(),
-                    count: Arc::new(AtomicU64::new(0)),
-                },
-            );
-        }
-
-        handler_lock
-    };
+    }
 
     Ok(handler_lock)
 }

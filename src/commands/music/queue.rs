@@ -20,7 +20,7 @@ use super::{
 #[only_in(guilds)]
 #[aliases("q")]
 pub async fn queue(ctx: &Context, msg: &Message) -> CommandResult {
-    let handler_lock = get_handler_lock(ctx, msg, false).await?;
+    let handler_lock = get_handler_lock(ctx, msg).await?;
     let handler = handler_lock.lock().await;
 
     let queue = handler.queue();
@@ -42,7 +42,7 @@ pub async fn queue(ctx: &Context, msg: &Message) -> CommandResult {
 #[only_in(guilds)]
 #[aliases("nepe", "np")]
 pub async fn now_playing(ctx: &Context, msg: &Message) -> CommandResult {
-    let handler_lock = get_handler_lock(ctx, msg, false).await?;
+    let handler_lock = get_handler_lock(ctx, msg).await?;
     let handler = handler_lock.lock().await;
 
     let track = handler
@@ -63,7 +63,7 @@ pub async fn now_playing(ctx: &Context, msg: &Message) -> CommandResult {
 #[only_in(guilds)]
 #[aliases("i")]
 pub async fn insert(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    let handler_lock = get_handler_lock(ctx, msg, true).await?;
+    let handler_lock = get_handler_lock(ctx, msg).await?;
 
     let index = args.single::<usize>()?;
     let query = args.rest();
@@ -108,7 +108,7 @@ pub async fn insert(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
 pub async fn remove(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let index = args.parse::<usize>().map_err(|_| "Índice inválido")?;
 
-    let handler_lock = get_handler_lock(ctx, msg, false).await?;
+    let handler_lock = get_handler_lock(ctx, msg).await?;
 
     let removed_title = remove_song(handler_lock, index).await?;
 
@@ -126,7 +126,7 @@ pub async fn remove(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[only_in(guilds)]
 #[aliases("re")]
 pub async fn replace(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let handler_lock = get_handler_lock(ctx, msg, true).await?;
+    let handler_lock = get_handler_lock(ctx, msg).await?;
 
     let query = args.rest();
 
@@ -177,7 +177,7 @@ pub async fn move_(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
         .single::<usize>()
         .map_err(|_| MusicCommandError::InvalidQueueIndex)?;
 
-    let handler_lock = get_handler_lock(ctx, msg, false).await?;
+    let handler_lock = get_handler_lock(ctx, msg).await?;
     let handler = handler_lock.lock().await;
 
     let queue = handler.queue();
@@ -212,7 +212,7 @@ pub async fn move_(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
 #[command]
 #[only_in(guilds)]
 pub async fn clear(ctx: &Context, msg: &Message) -> CommandResult {
-    let handler_lock = get_handler_lock(ctx, msg, false).await?;
+    let handler_lock = get_handler_lock(ctx, msg).await?;
     let handler = handler_lock.lock().await;
 
     let queue = handler.queue();
